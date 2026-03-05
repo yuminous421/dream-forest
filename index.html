@@ -11,15 +11,12 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 引入 Firebase SDK (CDN 穩定版) -->
+    <!-- 引入 Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ==========================================================
-        // 🚨 這是根據截圖填入的正確金鑰資訊
-        // ==========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAplUiEFdAdT0N6OSGWhKOeijpEF8oFlMk", 
             authDomain: "dream-forest-66323.firebaseapp.com",
@@ -55,13 +52,13 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- 修正後的圖示系統 (確保語法無誤) ---
+        // --- 圖示系統 ---
         const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
             const icons = {
                 Heart: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />,
                 ShieldHeart: <React.Fragment><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M12 14.5c.8-1 2.5-1.4 3-1 .6.4.5 1.5 0 2.2-1 1.3-3 2.8-3 2.8s-2-1.5-3-2.8c-.5-.7-.6-1.8 0-2.2.5-.4 2.2 0 3 1z" fill="currentColor" fillOpacity="0.3" /></React.Fragment>,
                 Lock: <React.Fragment><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></React.Fragment>,
-                Landmine: <React.Fragment><circle cx="12" cy="12" r="7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2" /><circle cx="12" cy="12" r="2" fill="currentColor"/></React.Fragment>,
+                Landmine: <React.Fragment><circle cx="12" cy="12" r="7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="2" fill="currentColor"/></React.Fragment>,
                 Plus: <path d="M5 12h14m-7-7v14" />,
                 Trash2: <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />,
                 CheckCircle2: <React.Fragment><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></React.Fragment>,
@@ -73,11 +70,8 @@
                 ChevronLeft: <polyline points="15 18 9 12 15 6" />,
                 ChevronDown: <polyline points="6 9 12 15 18 9" />,
                 Edit3: <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />,
-                Save: <React.Fragment><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /></React.Fragment>,
                 X: <React.Fragment><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></React.Fragment>,
-                Quote: <path d="M3 21c3 0 7-1 7-8V5H3v16zm11 0c3 0 7-1 7-8V5h-7v16z" />,
-                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
-                Stars: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -88,8 +82,8 @@
 
         const appId = 'couple-dream-forest-v1';
         const PARTNERS = {
-            A: { id: 'A', displayName: '糖糖', color: 'rose', accent: 'bg-rose-400', border: 'border-rose-200', text: 'text-rose-400', bg: 'bg-rose-50' },
-            B: { id: 'B', displayName: '果果', color: 'sky', accent: 'bg-sky-400', border: 'border-sky-200', text: 'text-sky-400', bg: 'bg-sky-50' }
+            A: { id: 'A', displayName: '糖糖', accent: 'bg-rose-400', border: 'border-rose-200', text: 'text-rose-400', bg: 'bg-rose-50' },
+            B: { id: 'B', displayName: '果果', accent: 'bg-sky-400', border: 'border-sky-200', text: 'text-sky-400', bg: 'bg-sky-50' }
         };
 
         const getDaysUntil = (dateStr) => {
@@ -99,6 +93,7 @@
             return Math.ceil(Math.abs(date - now) / (1000 * 60 * 60 * 24));
         };
 
+        // --- 物理數據卷宗組件 ---
         const ProfileInfoCard = ({ side, data, onSave }) => {
             const [isEditing, setIsEditing] = useState(false);
             const [tempData, setTempData] = useState(data || {});
@@ -127,6 +122,7 @@
             );
         };
 
+        // --- 地雷系統組件 ---
         const LandmineSystem = ({ side, data, onSave }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
@@ -145,7 +141,7 @@
                     {isOpen && (
                         <div className={`mt-3 bg-white p-6 rounded-[2.5rem] border-2 ${config.border} shadow-inner relative animate-in zoom-in-95 duration-200`}>
                             <div className="flex justify-between items-center mb-4 px-1">
-                                <span className="text-[10px] font-black text-rose-300 tracking-widest flex items-center gap-2"><Icon name="Zap" size={10} className="animate-pulse" /> 內心數據讀取中</span>
+                                <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest flex items-center gap-2"><Icon name="Zap" size={10} className="animate-pulse" /> 內心數據讀取中</span>
                                 <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 text-slate-300 hover:text-emerald-500">{isEditing ? <Icon name="X" size={18} /> : <Icon name="Edit3" size={18} />}</button>
                             </div>
                             <div className={`rounded-3xl p-5 ${config.bg} border border-dashed ${config.border}`}>
@@ -162,17 +158,20 @@
         const LoveTree = ({ progress, isGrowing }) => {
             const ani = isGrowing ? "animate-bounce" : "";
             const renderTree = () => {
-                if (progress === 0) return <div className={`text-amber-700 mt-10 flex flex-col items-center ${ani}`}><div className="w-5 h-5 bg-amber-800 rounded-full shadow-inner"></div><span className="text-[10px] mt-2 font-black opacity-30">Seeds</span></div>;
-                if (progress < 30) return <div className={`text-emerald-500 mt-6 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={52} /><span className="text-[10px] font-bold opacity-50">發芽</span></div>;
+                if (progress === 0) return <div className={`text-amber-700 mt-10 flex flex-col items-center ${ani}`}><div className="w-5 h-5 bg-amber-800 rounded-full shadow-inner"></div><span className="text-[10px] mt-2 font-black opacity-30 uppercase tracking-widest">Seeds</span></div>;
+                if (progress < 30) return <div className={`text-emerald-500 mt-6 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={52} /><span className="text-[10px] font-bold opacity-50 uppercase tracking-tighter">發芽</span></div>;
                 if (progress < 60) return <div className={`text-emerald-600 scale-125 mt-4 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={60} /></div>;
                 if (progress < 90) return <div className={`relative text-green-700 scale-150 mt-2 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={68} /><div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-300 rounded-full animate-pulse"></div></div>;
                 return <div className={`relative text-green-800 scale-[1.8] flex flex-col items-center transition-transform duration-700 ${ani}`}><Icon name="TreePine" size={72} /><div className="absolute inset-0 flex items-center justify-center"><Icon name="Heart" className="text-rose-400/60 fill-current animate-ping" size={24} /></div></div>;
             };
             return (
-                <div className="flex flex-col items-center justify-center py-14 bg-gradient-to-b from-emerald-50/20 to-emerald-100/30 rounded-[3.5rem] border border-emerald-100/50 mb-10 relative shadow-inner">
-                    <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-500/50"><Icon name="Wind" size={14} /><span className="text-[10px] font-black tracking-[0.2em] uppercase">Dream Forest</span></div>
+                <div className="flex flex-col items-center justify-center py-14 bg-gradient-to-b from-emerald-50/20 to-emerald-100/30 rounded-[3.5rem] border border-emerald-100/50 mb-10 relative shadow-inner text-center">
+                    <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-500/50">
+                        <Icon name="Droplets" size={14} className="animate-pulse" />
+                        <span className="text-[10px] font-black tracking-[0.2em] uppercase">Dream Forest</span>
+                    </div>
                     {renderTree()}
-                    <div className="mt-12 px-6 py-2 bg-white/80 backdrop-blur-md rounded-full border border-emerald-200 shadow-sm flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div><p className="text-xs font-black text-emerald-800 tracking-tight">能量進度：{progress}%</p></div>
+                    <div className="mt-12 px-6 py-2 bg-white/80 backdrop-blur-md rounded-full border border-emerald-200 shadow-sm flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div><p className="text-xs font-black text-emerald-800 tracking-tight">幸福能量：{progress}%</p></div>
                 </div>
             );
         };
@@ -186,9 +185,11 @@
             const [newWish, setNewWish] = useState('');
             const [loading, setLoading] = useState(true);
             const [errorMsg, setErrorMsg] = useState("");
+            const [errorCode, setErrorCode] = useState("");
             const [showProfiles, setShowProfiles] = useState(false);
             const [isGrowing, setIsGrowing] = useState(false);
 
+            // 1. 初始化 Firebase 認證
             useEffect(() => {
                 const initAuth = async () => {
                     if (window.fb) {
@@ -199,37 +200,85 @@
                             });
                         } catch (e) { 
                             console.error(e); 
-                            setErrorMsg("Firebase 驗證失敗。請檢查 API Key 是否有效。");
+                            setErrorMsg("Firebase 驗證失敗。請檢查 API Key 是否正確。");
+                            setErrorCode(e.code);
                         }
                     }
                 };
-                const timer = setInterval(() => { if (window.fb) { clearInterval(timer); initAuth(); } }, 500);
-                setTimeout(() => { if (loading && !errorMsg) setErrorMsg("連線超時：請確認資料庫權限或網域授權。"); }, 8000);
-                return () => clearInterval(timer);
+                const checkInterval = setInterval(() => { if (window.fb) { clearInterval(checkInterval); initAuth(); } }, 500);
+                return () => clearInterval(checkInterval);
             }, []);
 
+            // 修正：將超時偵測移到單獨的 useEffect，確保讀取後能清除
+            useEffect(() => {
+                if (loading) {
+                    const timer = setTimeout(() => {
+                        if (loading && !errorMsg) {
+                            setErrorMsg("連線超時：請確認資料庫規則(Rules)已改為 true 並點擊「發布」。");
+                        }
+                    }, 10000); // 延長至 10 秒更保險
+                    return () => clearTimeout(timer);
+                }
+            }, [loading, errorMsg]);
+
+            // 2. 監聽 Firestore 資料
             useEffect(() => {
                 if (!user || !window.fb) return;
                 const { db, collection, onSnapshot } = window.fb;
                 const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
-                onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); }, (err) => { console.error(err); setErrorMsg("權限不足：資料庫被鎖住了！"); });
-                onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => getDaysUntil(a.date) - getDaysUntil(b.date))); });
-                onSnapshot(path('profiles'), snap => { const data = { A: {}, B: {} }; snap.docs.forEach(d => { data[d.id] = d.data(); }); setProfiles(data); });
+                
+                const unsubW = onSnapshot(path('wishes'), snap => {
+                    setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+                }, (err) => { console.error(err); setErrorMsg("權限不足：資料庫被鎖住了！"); setErrorCode(err.code); });
+                
+                const unsubE = onSnapshot(path('events'), snap => {
+                    setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => getDaysUntil(a.date) - getDaysUntil(b.date)));
+                });
+                
+                const unsubP = onSnapshot(path('profiles'), snap => {
+                    const data = { A: {}, B: {} }; snap.docs.forEach(d => { data[d.id] = d.data(); }); setProfiles(data);
+                });
+                return () => { unsubW(); unsubE(); unsubP(); };
             }, [user]);
 
-            const progress = wishes.length > 0 ? Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100) : 0;
-            
-            const toggleDone = async (item) => {
-                const next = !item.completed; if(next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); }
-                await window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next });
+            // --- 功能函數 ---
+            const addWish = async (e) => {
+                e.preventDefault();
+                if (!newWish.trim() || !window.fb) return;
+                const { db, collection, addDoc, serverTimestamp } = window.fb;
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'wishes'), {
+                        text: newWish,
+                        creatorSide: mySide,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
+                    setNewWish('');
+                } catch (err) { console.error(err); }
             };
+
+            const toggleDone = async (item) => {
+                const next = !item.completed;
+                if (next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); }
+                const { db, doc, updateDoc } = window.fb;
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next });
+            };
+
+            const deleteItem = async (col, id) => {
+                const { db, doc, deleteDoc } = window.fb;
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
+            };
+
             const saveProfile = (s, d) => window.fb.setDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'profiles', s), d);
 
             if (errorMsg) return (
                 <div className="min-h-screen bg-[#FDFCF8] flex flex-col items-center justify-center p-10 text-center text-rose-500">
                     <Icon name="Lock" size={48} className="mb-4" />
-                    <h2 className="font-black text-xl mb-4 uppercase">驗證失敗</h2>
-                    <div className="bg-white p-6 rounded-3xl border-2 border-rose-100 text-sm leading-relaxed mb-6">{errorMsg}</div>
+                    <h2 className="font-black text-xl mb-4 uppercase">連線失敗</h2>
+                    <div className="bg-white p-6 rounded-3xl border-2 border-rose-100 text-sm mb-6 leading-relaxed">
+                        {errorMsg}
+                        {errorCode && <p className="mt-2 text-[10px] font-mono opacity-60">代碼: {errorCode}</p>}
+                    </div>
                     <button onClick={() => window.location.reload()} className="px-8 py-3 bg-rose-400 text-white rounded-full text-xs font-black shadow-lg">重新嘗試進入</button>
                 </div>
             );
@@ -240,6 +289,8 @@
                     <span className="text-xs font-black tracking-[0.3em] uppercase">進入森林中...</span>
                 </div>
             );
+
+            const progress = wishes.length > 0 ? Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100) : 0;
 
             return (
                 <div className="min-h-screen bg-[#FDFCF8] text-slate-600 pb-32 relative">
@@ -257,7 +308,12 @@
                     )}
 
                     <header className="bg-white/70 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50 shadow-sm">
-                        <div className="flex items-center gap-3"><Icon name="Droplets" className="text-emerald-500 animate-pulse" size={24} /><h1 className="font-black text-lg text-emerald-800 leading-none">夢想森林</h1></div>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500 shadow-inner">
+                                <Icon name="Heart" className="animate-pulse" size={20} />
+                            </div>
+                            <h1 className="font-black text-lg text-emerald-800 leading-none">夢想森林</h1>
+                        </div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100 active:scale-95 shadow-sm hover:bg-emerald-500 hover:text-white transition-all"><Icon name="ShieldHeart" size={22} /></button>
                             <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-100 shadow-inner">
@@ -271,11 +327,15 @@
                     <main className="max-w-xl mx-auto px-6 mt-8">
                         <LoveTree progress={progress} isGrowing={isGrowing} />
 
-                        <section className="mb-12">
-                            <div className="flex justify-between items-center mb-5 px-1"><div className="flex items-center gap-2 text-slate-400"><Icon name="Calendar" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">星光預告</h3></div></div>
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                        <section className="mb-12 text-center">
+                             <div className="flex items-center justify-center gap-2 mb-4 px-1 text-slate-400">
+                                <Icon name="Calendar" size={16} />
+                                <h3 className="text-xs font-black uppercase tracking-[0.2em]">重要日子倒數</h3>
+                             </div>
+                             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
                                 {events.map(event => (
-                                    <div key={event.id} className="min-w-[150px] bg-white p-5 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md">
+                                    <div key={event.id} className="min-w-[150px] bg-white p-5 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative">
+                                        <button onClick={() => deleteItem('events', event.id)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-400"><Icon name="Trash2" size={12}/></button>
                                         <div className="w-10 h-10 mb-4 rounded-2xl mx-auto flex items-center justify-center bg-emerald-50 text-emerald-500 shadow-inner">📆</div>
                                         <h4 className="text-[11px] font-bold text-slate-400 truncate mb-1">{event.title}</h4>
                                         <p className="text-xl font-black text-slate-800 tracking-tighter">{getDaysUntil(event.date)}<span className="text-[10px] ml-1 uppercase opacity-30 font-black">Days</span></p>
@@ -287,7 +347,7 @@
                         <section className="mb-12">
                             <div className="flex items-center gap-2 mb-4 px-1 text-slate-400"><Icon name="Plus" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">投遞許願瓶</h3></div>
                             <div className={`bg-white rounded-[3rem] p-8 shadow-2xl border-2 transition-all duration-700 ${PARTNERS[mySide].border}`}>
-                                <form onSubmit={async (e) => { e.preventDefault(); if(!newWish.trim())return; await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes'), { text: newWish, creatorSide: mySide, completed: false, createdAt: window.fb.serverTimestamp() }); setNewWish(''); }} className="space-y-6">
+                                <form onSubmit={addWish} className="space-y-6">
                                     <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`想在那瓶子裡裝進什麼願望？`} className="w-full p-4 bg-transparent border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300" />
                                     <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl active:scale-95 transition-all`}>拋向森林 🍾</button>
                                 </form>
@@ -304,11 +364,18 @@
                             {wishes.map((item) => {
                                 const side = PARTNERS[item.creatorSide || 'A'];
                                 return (
-                                    <div key={item.id} className={`relative p-8 rounded-[3.5rem] border transition-all ${item.completed ? 'opacity-40 grayscale bg-slate-50 border-slate-100' : `bg-white ${side.border} shadow-lg shadow-emerald-50/20`}`}>
+                                    <div key={item.id} className={`relative p-8 rounded-[3.5rem] border transition-all ${item.completed ? 'opacity-40 grayscale bg-slate-50 border-slate-100 shadow-none' : `bg-white ${side.border} shadow-lg shadow-emerald-50/20`}`}>
+                                        <div className="flex justify-between items-start mb-5">
+                                            <span className={`px-4 py-1 rounded-full ${item.completed ? 'bg-slate-200 text-slate-400' : `${side.accent} text-white`} text-[10px] font-black uppercase tracking-widest`}>願望瓶</span>
+                                            <button onClick={() => deleteItem('wishes', item.id)} className="text-slate-300 hover:text-rose-400"><Icon name="Trash2" size={16} /></button>
+                                        </div>
                                         <p className={`text-slate-700 font-semibold mb-8 leading-relaxed text-md ${item.completed ? 'line-through text-slate-300' : ''}`}>{item.text}</p>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{side.displayName}</span>
-                                            <button onClick={() => toggleDone(item)} className={`px-7 py-3 rounded-full text-[13px] font-black border transition-all ${item.completed ? 'bg-emerald-500 text-white border-transparent' : 'bg-white text-slate-300 border-slate-100 hover:border-emerald-200'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</div>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{side.displayName}</span>
+                                            </div>
+                                            <button onClick={() => toggleDone(item)} className={`px-7 py-3 rounded-full text-[13px] font-black border transition-all ${item.completed ? 'bg-emerald-500 text-white border-transparent shadow-none' : 'bg-white text-slate-300 border-slate-100 hover:border-emerald-200'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
                                         </div>
                                     </div>
                                 );
@@ -341,6 +408,7 @@
     </script>
 </body>
 </html>
+
 
 
 
