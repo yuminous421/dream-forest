@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>糖糖與果果的夢想森林 🌳</title>
+    <title>糖果的夢想森林🌳</title>
     
     <!-- 引入工具庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -120,13 +120,13 @@
 
         const formatFullDate = (d) => d ? d.replace(/-/g, " . ") : "";
 
-        // --- 組件：物理卷宗 ---
+        // --- 組件：機密卷宗 ---
         const ProfileCard = ({ side, data, onSave, onDelete }) => {
             const [isEdit, setIsEdit] = useState(false);
             const [tmp, setTmp] = useState(data || {});
             const config = PARTNERS[side];
             useEffect(() => { setTmp(data || {}); }, [data]);
-            const fields = [{l:'海拔高度', k:'height'}, {l:'森林佔地重', k:'weight'}, {l:'腳掌面積', k:'shoeSize'}, {l:'視覺偏好', k:'favColor'}];
+            const fields = [{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}];
             return (
                 <div className={`w-full bg-white rounded-[2.5rem] p-8 border-2 ${config.border} shadow-xl mb-6 relative overflow-hidden`}>
                     <div className="flex justify-between items-center mb-6">
@@ -440,6 +440,7 @@
     </script>
 </body>
 </html>
+
 
 
 
