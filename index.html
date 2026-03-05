@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>糖糖與果果的夢想森林 🌳</title>
     
-    <!-- 引入工具庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -401,7 +400,7 @@
                                 <form onSubmit={addWish} className="space-y-4 text-center">
                                     <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`想一起去做什麼夢？`} className="w-full p-4 bg-slate-50/50 rounded-2xl border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300 text-center" />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div className="relative"><input value={wishLocation} onChange={e=>setWishLocation(e.target.value)} placeholder="哪裡？ (選填)" className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm font-bold text-center" /><Icon name="MapPin" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
+                                        <div className="relative"><input value={wishLocation} onChange={e=>setWishLocation(e.target.value)} placeholder="地點？ (選填)" className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm font-bold text-center" /><Icon name="MapPin" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
                                         <div className="relative"><input type="date" value={wishDate} onChange={e=>setWishDate(e.target.value)} onClick={e=>e.target.showPicker && e.target.showPicker()} className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm text-center cursor-pointer" /><Icon name="Calendar" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
                                     </div>
                                     <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active transition-all active:scale-95`}>拋向森林 🍾</button>
@@ -985,6 +984,7 @@
     </script>
 </body>
 </html>
+
 
 
 
