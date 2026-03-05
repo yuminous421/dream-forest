@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>糖糖與果果的夢想森林 🌳</title>
     
-    <!-- 引入必要的工具庫 -->
+    <!-- 引入工具庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 引入 Firebase SDK (CDN 穩定版) -->
+    <!-- 引入 Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // ==========================================================
-        // 🚨 糖糖/果果請注意：這裡已幫你填入截圖中的正確資訊
+        // 🚨 這裡已根據您的截圖自動填入正確資訊
         // ==========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAplUiEFdAdT0N6OSGWhKOeijpEF8oFlMk", 
@@ -33,8 +33,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // 導出到全局讓 React 可以直接調用
-        window.fb = { db, auth, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, signInAnonymously, onAuthStateChanged, query, firebaseConfig };
+        window.fb = { db, auth, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, signInAnonymously, onAuthStateChanged, query };
     </script>
 
     <style>
@@ -46,13 +45,8 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        
         .landmine-shake:hover { animation: shake 0.5s both; }
-        @keyframes shake { 
-            0%, 100% { transform: translateX(0); } 
-            25% { transform: translateX(-2px); } 
-            75% { transform: translateX(2px); } 
-        }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
     </style>
 </head>
 <body>
@@ -61,7 +55,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- 全局圖示系統 (確保所有組件都能找到它) ---
+        // --- 全局圖示系統 ---
         const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
             const icons = {
                 Heart: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />,
@@ -82,9 +76,9 @@
                 ChevronLeft: <polyline points="15 18 9 12 15 6" />,
                 ChevronDown: <polyline points="6 9 12 15 18 9" />,
                 Edit3: <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />,
-                Save: <React.Fragment><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /></React.Fragment>,
-                X: <React.Fragment><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></React.Fragment>,
-                Quote: <path d="M3 21c3 0 7-1 7-8V5H3v16zm11 0c3 0 7-1 7-8V5h-7v16z" />
+                Quote: <path d="M3 21c3 0 7-1 7-8V5H3v16zm11 0c3 0 7-1 7-8V5h-7v16z" />,
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+                Stars: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -106,22 +100,18 @@
             return Math.ceil(Math.abs(date - now) / (1000 * 60 * 60 * 24));
         };
 
-        // --- 彈窗：絕密卷宗組件 ---
         const ProfileInfoCard = ({ side, data, onSave }) => {
             const [isEditing, setIsEditing] = useState(false);
             const [tempData, setTempData] = useState(data || {});
             const config = PARTNERS[side];
             useEffect(() => { setTempData(data || {}); }, [data]);
-            const fields = [
-                {l:'海拔高度', k:'height'}, {l:'森林佔地重', k:'weight'}, 
-                {l:'腳掌面積', k:'shoeSize'}, {l:'視覺偏好', k:'favColor'}
-            ];
+            const fields = [{l:'海拔高度', k:'height'}, {l:'森林佔地重', k:'weight'}, {l:'腳掌面積', k:'shoeSize'}, {l:'視覺偏好', k:'favColor'}];
             return (
                 <div className={`w-full bg-white rounded-[2.5rem] p-8 border-2 transition-all ${config.border} shadow-xl mb-6 relative overflow-hidden`}>
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-4">
                             <div className={`w-12 h-12 rounded-[1.2rem] ${config.accent} flex items-center justify-center text-white shadow-lg`}><Icon name="ShieldHeart" size={24} /></div>
-                            <div><h3 className={`font-black text-xl ${config.text}`}>{config.displayName} 絕密卷宗</h3></div>
+                            <div><h3 className={`font-black text-xl ${config.text}`}>{config.displayName} 物理卷宗</h3></div>
                         </div>
                         <button onClick={() => setIsEditing(!isEditing)} className="p-2 text-slate-300 hover:text-emerald-500">{isEditing ? <Icon name="X" size={20} /> : <Icon name="Edit3" size={20} />}</button>
                     </div>
@@ -129,16 +119,15 @@
                         {fields.map(f => (
                             <div key={f.k} className="flex items-center justify-between border-b border-slate-50 pb-3">
                                 <span className="text-slate-400 font-bold text-xs">{f.l}</span>
-                                {isEditing ? <input value={tempData[f.k] || ''} onChange={e => setTempData({...tempData, [f.k]: e.target.value})} className="w-32 bg-slate-50 border-none rounded-xl px-3 py-1 text-right text-sm font-bold outline-none" /> : <span className="text-slate-700 font-black text-sm">{data?.[f.k] || '待讀取'}</span>}
+                                {isEditing ? <input value={tempData[f.k] || ''} onChange={e => setTempData({...tempData, [f.k]: e.target.value})} className="w-32 bg-slate-50 border-none rounded-xl px-3 py-1 text-right text-sm font-bold outline-none" /> : <span className="text-slate-700 font-black text-sm">{data?.[f.k] || '待填'}</span>}
                             </div>
                         ))}
                     </div>
-                    {isEditing && <button onClick={async () => { await onSave(side, tempData); setIsEditing(false); }} className={`w-full mt-6 py-4 ${config.accent} text-white rounded-2xl font-black text-sm active:scale-95 shadow-lg`}>存入雲端卷宗</button>}
+                    {isEditing && <button onClick={async () => { await onSave(side, tempData); setIsEditing(false); }} className={`w-full mt-6 py-4 ${config.accent} text-white rounded-2xl font-black text-sm`}>存入雲端數據</button>}
                 </div>
             );
         };
 
-        // --- 首頁：地雷系統組件 ---
         const LandmineSystem = ({ side, data, onSave }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [isEditing, setIsEditing] = useState(false);
@@ -157,16 +146,34 @@
                     {isOpen && (
                         <div className={`mt-3 bg-white p-6 rounded-[2.5rem] border-2 ${config.border} shadow-inner relative animate-in zoom-in-95 duration-200`}>
                             <div className="flex justify-between items-center mb-4 px-1">
-                                <span className="text-[10px] font-black text-rose-300 uppercase tracking-widest flex items-center gap-2">危險心聲讀取中...</span>
+                                <span className="text-[10px] font-black text-rose-300 tracking-widest flex items-center gap-2"><Icon name="Zap" size={12} className="animate-pulse" /> 內心數據讀取中</span>
                                 <button onClick={() => setIsEditing(!isEditing)} className="p-1.5 text-slate-300 hover:text-emerald-500">{isEditing ? <Icon name="X" size={18} /> : <Icon name="Edit3" size={18} />}</button>
                             </div>
                             <div className={`rounded-3xl p-5 ${config.bg} border border-dashed ${config.border}`}>
                                 {isEditing ? <textarea value={tempData.innerWorld || ''} onChange={e => setTempData({...tempData, innerWorld: e.target.value})} className="w-full h-32 bg-white/60 border-none rounded-2xl p-4 text-sm font-medium outline-none resize-none" /> : 
-                                <p className="text-slate-600 text-sm font-medium leading-relaxed italic whitespace-pre-wrap px-2">{data?.innerWorld || '目前森林天氣晴朗，沒有地雷。'}</p>}
+                                <p className="text-slate-600 text-sm font-medium leading-relaxed italic whitespace-pre-wrap px-2">{data?.innerWorld || '目前森林天氣晴朗。'}</p>}
                             </div>
                             {isEditing && <button onClick={async () => { await onSave(side, tempData); setIsEditing(false); }} className={`w-full mt-4 py-3 ${config.accent} text-white rounded-2xl font-black text-xs active:scale-95 shadow-md`}>更新雷達數據</button>}
                         </div>
                     )}
+                </div>
+            );
+        };
+
+        const LoveTree = ({ progress, isGrowing }) => {
+            const ani = isGrowing ? "animate-bounce" : "";
+            const renderTree = () => {
+                if (progress === 0) return <div className={`text-amber-700 mt-10 flex flex-col items-center ${ani}`}><div className="w-5 h-5 bg-amber-800 rounded-full shadow-inner"></div><span className="text-[10px] mt-2 font-black opacity-30">Seeds</span></div>;
+                if (progress < 30) return <div className={`text-emerald-500 mt-6 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={52} /><span className="text-[10px] font-bold opacity-50">發芽</span></div>;
+                if (progress < 60) return <div className={`text-emerald-600 scale-125 mt-4 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={60} /></div>;
+                if (progress < 90) return <div className={`relative text-green-700 scale-150 mt-2 flex flex-col items-center transition-transform duration-500 ${ani}`}><Icon name="TreePine" size={68} /><div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-300 rounded-full animate-pulse"></div></div>;
+                return <div className={`relative text-green-800 scale-[1.8] flex flex-col items-center transition-transform duration-700 ${ani}`}><Icon name="TreePine" size={72} /><div className="absolute inset-0 flex items-center justify-center"><Icon name="Heart" className="text-rose-400/60 fill-current animate-ping" size={24} /></div></div>;
+            };
+            return (
+                <div className="flex flex-col items-center justify-center py-14 bg-gradient-to-b from-emerald-50/20 to-emerald-100/30 rounded-[3.5rem] border border-emerald-100/50 mb-10 relative shadow-inner">
+                    <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-400/60"><Icon name="Wind" size={14} /><span className="text-[10px] font-black uppercase tracking-widest">Dream Forest</span></div>
+                    {renderTree()}
+                    <div className="mt-12 px-6 py-2 bg-white/80 backdrop-blur-md rounded-full border border-emerald-200 shadow-sm flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div><p className="text-xs font-black text-emerald-800 tracking-tight">能量進度：{progress}%</p></div>
                 </div>
             );
         };
@@ -179,11 +186,11 @@
             const [mySide, setMySide] = useState('A');
             const [newWish, setNewWish] = useState('');
             const [loading, setLoading] = useState(true);
-            const [errorReport, setErrorReport] = useState("");
+            const [errorMsg, setErrorMsg] = useState("");
+            const [errorCode, setErrorCode] = useState("");
             const [showProfiles, setShowProfiles] = useState(false);
             const [showEventForm, setShowEventForm] = useState(false);
 
-            // 1. 登入機制
             useEffect(() => {
                 const initAuth = async () => {
                     if (window.fb) {
@@ -193,47 +200,40 @@
                                 if (u) { setUser(u); setLoading(false); }
                             });
                         } catch (e) { 
-                            console.error("Auth Error", e);
-                            setErrorReport(`🚨 驗證失敗 (${e.code})：請確認 Firebase 後台已開啟匿名登入。`); 
+                            console.error(e); 
+                            setErrorMsg("Firebase 驗證失敗。請檢查 API Key 是否有效。");
+                            setErrorCode(e.code);
                         }
                     }
                 };
                 const timer = setInterval(() => { if (window.fb) { clearInterval(timer); initAuth(); } }, 500);
-                setTimeout(() => { if (loading && !errorReport) setErrorReport("🚨 讀取超時！通常是因為 Firebase Rules 規則未設為 if true 並點擊發布。"); }, 6000);
+                setTimeout(() => { if (loading && !errorMsg) setErrorMsg("連線超時：通常是因為資料庫被鎖住或是網域未授權。"); }, 6000);
                 return () => clearInterval(timer);
             }, []);
 
-            // 2. 監聽資料庫
             useEffect(() => {
                 if (!user || !window.fb) return;
                 const { db, collection, onSnapshot } = window.fb;
                 const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
-                
-                onSnapshot(path('wishes'), snap => {
-                    setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-                }, (err) => setErrorReport("🚨 權限不足：資料庫被鎖住了！請確認規則已改為 if true 並按發布。"));
-                
-                onSnapshot(path('events'), snap => {
-                    setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => getDaysUntil(a.date) - getDaysUntil(b.date)));
-                });
-                
-                onSnapshot(path('profiles'), snap => {
-                    const data = { A: {}, B: {} }; snap.docs.forEach(d => { data[d.id] = d.data(); }); setProfiles(data);
-                });
+                onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); }, (err) => setErrorMsg("權限不足：資料庫未發布。"));
+                onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => getDaysUntil(a.date) - getDaysUntil(b.date))); });
+                onSnapshot(path('profiles'), snap => { const data = { A: {}, B: {} }; snap.docs.forEach(d => { data[d.id] = d.data(); }); setProfiles(data); });
             }, [user]);
 
-            const progress = wishes.length > 0 ? Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100) : 0;
             const toggleDone = async (item) => {
-                const { db, doc, updateDoc } = window.fb;
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: !item.completed });
+                await window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: !item.completed });
             };
             const saveProfile = (s, d) => window.fb.setDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'profiles', s), d);
 
-            if (errorReport) return (
+            if (errorMsg) return (
                 <div className="min-h-screen bg-[#FDFCF8] flex flex-col items-center justify-center p-10 text-center text-rose-500">
-                    <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-6 shadow-xl"><Icon name="Lock" size={40} /></div>
-                    <h2 className="font-black text-xl mb-4">森林入口受阻</h2>
-                    <div className="bg-white p-6 rounded-3xl border-2 border-rose-100 text-sm leading-relaxed mb-6 whitespace-pre-wrap">{errorReport}</div>
+                    <Icon name="Lock" size={48} className="mb-4" />
+                    <h2 className="font-black text-xl mb-2">森林守護者驗證失敗</h2>
+                    <div className="bg-white p-6 rounded-3xl border-2 border-rose-100 text-sm leading-relaxed mb-6">
+                        {errorMsg}
+                        {errorCode && <p className="mt-2 text-[10px] font-mono opacity-60">Code: {errorCode}</p>}
+                    </div>
+                    <p className="text-xs text-slate-400 mb-6">解決方法：請確認 Firebase Console 的 Authorized Domains 網域已加入 yuminous421.github.io</p>
                     <button onClick={() => window.location.reload()} className="px-8 py-3 bg-rose-400 text-white rounded-full text-xs font-black shadow-lg">重新嘗試進入</button>
                 </div>
             );
@@ -245,9 +245,10 @@
                 </div>
             );
 
+            const progress = wishes.length > 0 ? Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100) : 0;
+
             return (
                 <div className="min-h-screen bg-[#FDFCF8] text-slate-600 pb-32 relative">
-                    {/* 彈窗：物理卷宗 */}
                     {showProfiles && (
                         <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
                             <div className="max-w-xl mx-auto px-6 py-12">
@@ -261,7 +262,7 @@
                         </div>
                     )}
 
-                    <header className="bg-white/70 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50">
+                    <header className="bg-white/70 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50 shadow-sm">
                         <div className="flex items-center gap-3"><Icon name="Droplets" className="text-emerald-500 animate-pulse" size={24} /><h1 className="font-black text-lg text-emerald-800 leading-none">夢想森林</h1></div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100 active:scale-95 shadow-sm hover:bg-emerald-500 hover:text-white transition-all"><Icon name="ShieldHeart" size={22} /></button>
@@ -274,32 +275,22 @@
                     </header>
 
                     <main className="max-w-xl mx-auto px-6 mt-8">
-                        {/* 小樹苗成長區 */}
-                        <div className="flex flex-col items-center justify-center py-12 bg-gradient-to-b from-transparent to-emerald-50/20 rounded-[3rem] border border-emerald-100/50 mb-10 shadow-inner">
-                            <div className="mb-8 scale-[1.5] text-emerald-600">
-                                {progress < 30 ? <Icon name="TreePine" size={48} /> : progress < 70 ? <Icon name="TreePine" className="scale-125" size={52} /> : <div className="relative"><Icon name="TreePine" className="scale-150" size={60} /><Icon name="Heart" className="absolute top-0 right-0 text-rose-300 animate-ping" size={16} /></div>}
-                            </div>
-                            <div className="mt-4 px-6 py-2 bg-white/80 rounded-full border border-emerald-200 text-xs font-black text-emerald-800">幸福能量：{progress}%</div>
-                        </div>
+                        <LoveTree progress={progress} />
 
-                        {/* 重要日子 */}
                         <section className="mb-12">
                             <div className="flex justify-between items-center mb-5 px-1"><div className="flex items-center gap-2 text-slate-400"><Icon name="Calendar" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">星光預告</h3></div><button onClick={() => setShowEventForm(!showEventForm)} className="text-[10px] font-black bg-white border border-slate-100 px-4 py-2 rounded-full text-slate-400 hover:text-emerald-500 shadow-sm transition-all">{showEventForm ? '取消' : '+ 記下日子'}</button></div>
                             {showEventForm && (
-                                <form onSubmit={async (e) => { e.preventDefault(); const t = e.target[0].value; const d = e.target[1].value; const ty = e.target[2].value; if(!t||!d)return; await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'events'), { title: t, date: d, type: ty, createdAt: window.fb.serverTimestamp() }); setShowEventForm(false); }} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-5">
+                                <form onSubmit={async (e) => { e.preventDefault(); const t = e.target[0].value; const d = e.target[1].value; if(!t||!d)return; await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'events'), { title: t, date: d, createdAt: window.fb.serverTimestamp() }); setShowEventForm(false); }} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-5 animate-in slide-in-from-top-4">
                                     <input placeholder="日子名稱..." className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold" />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner" />
-                                        <select className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-slate-500 text-sm font-bold shadow-inner"><option value="anniversary">紀念日</option><option value="birthday">生日</option></select>
-                                    </div>
-                                    <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all">種下這份記憶</button>
+                                    <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm" />
+                                    <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-md hover:bg-emerald-500 transition-all">種下這份記憶</button>
                                 </form>
                             )}
                             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
                                 {events.map(event => (
                                     <div key={event.id} className="min-w-[150px] bg-white p-5 rounded-[2.5rem] border border-emerald-50 shadow-sm relative group snap-start transition-all hover:shadow-md text-center">
                                         <button onClick={() => window.fb.deleteDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'events', event.id))} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-400 transition-all"><Icon name="Trash2" size={12} /></button>
-                                        <div className="w-10 h-10 mb-4 rounded-2xl mx-auto flex items-center justify-center bg-emerald-50 text-emerald-500 shadow-inner">{event.type === 'birthday' ? <Icon name="Cake" size={18} /> : <Icon name="Sparkles" size={18} />}</div>
+                                        <div className="w-10 h-10 mb-4 rounded-2xl mx-auto flex items-center justify-center bg-emerald-50 text-emerald-500 shadow-inner"><Icon name="Stars" size={18} /></div>
                                         <h4 className="text-[11px] font-bold text-slate-400 truncate mb-1">{event.title}</h4>
                                         <p className="text-xl font-black text-slate-800 tracking-tighter">{getDaysUntil(event.date)}<span className="text-[10px] ml-1 uppercase opacity-30 tracking-widest font-black">Days</span></p>
                                     </div>
@@ -307,16 +298,8 @@
                             </div>
                         </section>
 
-                        {/* 地雷系統 */}
                         <section className="mb-12">
-                            <div className="flex items-center gap-2 mb-4 px-1 text-slate-400"><Icon name="Lock" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">森林絕密：爆炸預警</h3></div>
-                            <LandmineSystem side="A" data={profiles.A} onSave={saveProfile} />
-                            <LandmineSystem side="B" data={profiles.B} onSave={saveProfile} />
-                        </section>
-
-                        {/* 投遞許願瓶 */}
-                        <section className="mb-12">
-                            <div className="flex items-center gap-2 mb-4 px-1 text-slate-400"><Icon name="Plus" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">投遞許願瓶</h3></div>
+                            <div className="flex items-center gap-2 mb-5 px-1 text-slate-400"><Icon name="Plus" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">投遞許願瓶</h3></div>
                             <div className={`bg-white rounded-[3rem] p-8 shadow-2xl border-2 transition-all duration-700 ${PARTNERS[mySide].border}`}>
                                 <form onSubmit={async (e) => { e.preventDefault(); if(!newWish.trim())return; await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes'), { text: newWish, creatorSide: mySide, completed: false, createdAt: window.fb.serverTimestamp() }); setNewWish(''); }} className="space-y-6">
                                     <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`想在那瓶子裡裝進什麼願望？`} className="w-full p-4 bg-transparent border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300" />
@@ -325,7 +308,12 @@
                             </div>
                         </section>
 
-                        {/* 願望清單 */}
+                        <section className="mb-12">
+                            <div className="flex items-center gap-2 mb-4 px-1 text-slate-400"><Icon name="Lock" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">森林絕密：爆炸預警</h3></div>
+                            <LandmineSystem side="A" data={profiles.A} onSave={saveProfile} />
+                            <LandmineSystem side="B" data={profiles.B} onSave={saveProfile} />
+                        </section>
+
                         <div className="space-y-8 mb-24">
                             {wishes.map((item) => {
                                 const side = PARTNERS[item.creatorSide || 'A'];
@@ -335,7 +323,7 @@
                                             <span className={`px-5 py-1.5 rounded-full ${item.completed ? 'bg-slate-200 text-slate-400' : `${side.accent} text-white`} text-[10px] font-black uppercase tracking-widest`}>願望瓶</span>
                                             <button onClick={() => window.fb.deleteDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id))} className="text-slate-300 hover:text-rose-400 transition-all p-1"><Icon name="Trash2" size={16} /></button>
                                         </div>
-                                        <p className={`text-slate-700 font-semibold mb-8 leading-relaxed text-md ${item.completed ? 'line-through text-slate-300' : ''}`}>{item.text}</p>
+                                        <p className={`text-slate-700 font-semibold px-1 mb-8 leading-relaxed text-md ${item.completed ? 'line-through text-slate-300' : ''}`}>{item.text}</p>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3"><div className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{side.displayName}</span></div>
                                             <button onClick={() => toggleDone(item)} className={`px-7 py-3 rounded-full text-[13px] font-black border transition-all ${item.completed ? 'bg-emerald-500 text-white border-transparent shadow-inner' : 'bg-white text-slate-300 border-slate-100 hover:border-emerald-200'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
@@ -346,11 +334,10 @@
                         </div>
                     </main>
 
-                    {/* 底部導航 */}
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-50">
                         <div className="bg-white/90 backdrop-blur-2xl p-6 rounded-[2.5rem] shadow-2xl border border-emerald-100/50 flex items-center gap-6 ring-1 ring-emerald-50">
-                            <div className="flex-1"><div className="flex justify-between items-center mb-2 px-1 text-[10px] font-black text-slate-400 uppercase tracking-widest"><span>森林能量</span><span>{progress}%</span></div><div className="h-3 bg-emerald-50 rounded-full overflow-hidden p-0.5 border"><div className="h-full bg-gradient-to-r from-emerald-300 to-green-500 rounded-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${progress}%` }} /></div></div>
-                            <div className="p-3 rounded-2xl shadow-lg ring-4 ring-white bg-emerald-500 text-white"><Icon name="Heart" size={20} fill="currentColor" /></div>
+                            <div className="flex-1"><div className="flex justify-between items-center mb-2 px-1 text-[10px] font-black text-slate-400 uppercase tracking-widest"><span>森林能量</span><span>{progress}%</span></div><div className="h-3 bg-emerald-50 rounded-full overflow-hidden p-0.5 border shadow-inner"><div className="h-full bg-gradient-to-r from-emerald-300 to-green-500 rounded-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${progress}%` }} /></div></div>
+                            <div className={`p-3 rounded-2xl shadow-lg ring-4 ring-white bg-emerald-500 text-white transition-all`}><Icon name="Heart" size={20} fill="currentColor" /></div>
                         </div>
                     </div>
                 </div>
