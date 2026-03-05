@@ -58,7 +58,7 @@
         .kaboom-pulse { animation: kaboom 1.5s infinite; }
         @keyframes kaboom {
             0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.2); filter: brightness(1.4); }
+            50% { transform: scale(1.2); filter: brightness(1.4) drop-shadow(0 0 10px red); }
         }
 
         /* 足跡動畫 */
@@ -103,7 +103,7 @@
                 Plus: <path d="M5 12h14m-7-7v14" />,
                 Trash2: <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />,
                 CheckCircle2: <React.Fragment><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></React.Fragment>,
-                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
+                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z" />,
                 Calendar: <React.Fragment><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="3" y1="10" x2="21" y2="10" /></React.Fragment>,
                 TreePine: <React.Fragment><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-2l3.3-3.7a1 1 0 0 1 1.4 0L12 13l2.3-2.7a1 1 0 0 1 1.4 0L19 14h-2Z" /><path d="M12 22v-3" /></React.Fragment>,
                 X: <React.Fragment><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></React.Fragment>,
@@ -191,8 +191,14 @@
             const [loading, setLoading] = useState(true);
             const [dataLoaded, setDataLoaded] = useState(false);
             const [errorMsg, setErrorMsg] = useState("");
-            const [showProfiles, setShowProfiles] = useState(false); // 修正：原先漏掉的宣告
-            const [isGrowing, setIsGrowing] = useState(false); // 修正：原先漏掉的宣告
+            const [showProfiles, setShowProfiles] = useState(false);
+            const [isGrowing, setIsGrowing] = useState(false);
+
+            // 能量進度計算：搬到最上方確保變數可用
+            const progress = useMemo(() => {
+                if (wishes.length === 0) return 0;
+                return Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100);
+            }, [wishes]);
 
             // 許願瓶狀態
             const [newWish, setNewWish] = useState('');
@@ -220,7 +226,7 @@
 
             useEffect(() => {
                 if (loading && !dataLoaded) {
-                    const t = setTimeout(() => { if (loading && !dataLoaded) setErrorMsg("連線超時，請檢查 Rules 配置。"); }, 12000);
+                    const t = setTimeout(() => { if (loading && !dataLoaded) setErrorMsg("連線超時，請檢查資料庫 Rules 配置。"); }, 12000);
                     return () => clearTimeout(t);
                 }
             }, [loading, dataLoaded]);
@@ -236,7 +242,7 @@
                 return () => { unsubW(); unsubE(); unsubC(); unsubP(); };
             }, [user]);
 
-            // --- 核心地圖點邏輯：手動足跡 + 已完成且有地點的願望 ---
+            // 地圖點邏輯：手動足跡 + 已完成願望地點
             const combinedFootprints = useMemo(() => {
                 const manual = cities.map(c => ({ id: c.id, name: c.name, date: c.date, type: 'manual', color: 'emerald' }));
                 const wishPins = wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, name: w.location, date: w.targetDate || w.createdAt?.seconds * 1000, type: 'wish', color: 'rose' }));
@@ -288,7 +294,6 @@
                                     <button onClick={() => setShowProfiles(false)} className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 tap-active shadow-sm transition-all"><Icon name="ChevronLeft" size={24} /></button>
                                     <h2 className="font-black text-xl text-slate-800 tracking-widest uppercase">物理絕密卷宗</h2><div className="w-12 h-12"></div>
                                 </div>
-                                
                                 {Object.values(PARTNERS).map(config => {
                                     const data = profiles[config.id] || {};
                                     const fields = [{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}];
@@ -406,17 +411,17 @@
                             );
                         })}
 
-                        {/* 4. 許願瓶 */}
+                        {/* 4. 許願瓶 (地點連動) */}
                         <section>
                             <div className="flex items-center gap-2 mb-4 px-1 text-slate-400 justify-center font-black uppercase tracking-widest text-xs"><Icon name="Plus" size={16} /> 投遞許願瓶</div>
                             <div className={`bg-white rounded-[3rem] p-8 shadow-2xl border-2 transition-all duration-700 ${PARTNERS[mySide].border}`}>
                                 <form onSubmit={addWish} className="space-y-4 text-center">
-                                    <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`一起去做什麼夢？`} className="w-full p-4 bg-slate-50/50 rounded-2xl border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300 text-center" />
+                                    <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`一起做什麼夢？`} className="w-full p-4 bg-slate-50/50 rounded-2xl border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300 text-center" />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div className="relative"><input value={wishLoc} onChange={e=>setWishLoc(e.target.value)} placeholder="地點？ (選填)" className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm font-bold text-center" /><Icon name="MapPin" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
                                         <div className="relative"><input type="date" value={wishDate} onChange={e=>setWishDate(e.target.value)} onClick={e=>e.target.showPicker && e.target.showPicker()} className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm text-center cursor-pointer" /><Icon name="Calendar" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
                                     </div>
-                                    <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active active:scale-95 transition-all`}>拋向森林 🍾</button>
+                                    <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active active:scale-95 transition-all`}>擲向森林 🍾</button>
                                 </form>
                             </div>
                         </section>
@@ -438,7 +443,7 @@
                                                 {item.targetDate && <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 text-xs font-bold"><Icon name="Calendar" size={12} className="text-rose-300" /> {item.targetDate.replace(/-/g, " . ")} {status?.type === 'future' && <span className="ml-1 text-rose-400 text-[10px] font-black">(剩 {status.diff} 天)</span>}</div>}
                                             </div>
                                         )}
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between pt-2">
                                             <div className="flex items-center gap-2 text-left">
                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</div>
                                                 <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{side.displayName}</span>
@@ -450,7 +455,7 @@
                             })}
                         </div>
 
-                        {/* 5. 夢想足跡*/}
+                        {/* 5. 夢想足跡：台灣視覺地圖 */}
                         <section className="mb-24 px-1 text-center">
                             <div className="flex justify-between items-center mb-5 text-left px-2">
                                 <div className="flex items-center gap-2 text-slate-400 font-black uppercase tracking-widest text-[10px]"><Icon name="Compass" size={16} /> 夢想足跡：台灣地圖</div>
@@ -459,7 +464,7 @@
                             
                             {showCityForm && (
                                 <form onSubmit={addCity} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-4 animate-in slide-in-from-top-4 relative z-20 text-center">
-                                    <textarea placeholder="輸入城市 (台北、台中、台南...)&#10;每行一個城市可批次新增" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center h-24" value={cityT} onChange={e=>setCityT(e.target.value)} required />
+                                    <textarea placeholder="輸入城市 (台北、宜蘭、台中、台南...)&#10;每行一個城市可批次新增" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center h-24" value={cityT} onChange={e=>setCityT(e.target.value)} required />
                                     <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner text-center cursor-pointer" value={cityD} onChange={e=>setCityD(e.target.value)} onClick={e=>e.target.showPicker && e.target.showPicker()} />
                                     <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl tap-active active:scale-95 transition-all">將足跡刻在台灣上</button>
                                 </form>
@@ -491,8 +496,10 @@
                                         );
                                     })}
                                 </div>
+                                <div className="absolute bottom-6 right-8 text-[8px] font-black text-slate-300 uppercase tracking-widest italic leading-none">Taiwan Memory Map</div>
                             </div>
                             
+                            {/* 足跡管理列表 */}
                             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
                                 {cities.map(city => (
                                     <div key={city.id} className="min-w-[150px] bg-white p-5 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative overflow-hidden">
