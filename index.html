@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>糖果的夢想森林 🌳 - 完整版</title>
+    <title>糖果的夢想森林 🌳</title>
     
     <!-- 工具庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -70,7 +70,7 @@
         /* 輸入框初始淡色狀態 */
         .input-pale {
             background-color: rgba(248, 250, 252, 0.5); /* slate-50/50 */
-            color: #94a3b8; /* slate-400 */
+            color: #cbd5e1; /* slate-300 */
             transition: all 0.3s ease;
         }
         .input-pale:focus, .input-pale.has-value {
@@ -80,6 +80,12 @@
         }
 
         .county-path { transition: all 0.3s ease; cursor: pointer; }
+        
+        /* 預告提醒的光暈 */
+        .reminder-glow {
+            box-shadow: 0 0 15px rgba(251, 113, 133, 0.3);
+            border-color: rgba(251, 113, 133, 0.4) !important;
+        }
     </style>
 </head>
 <body>
@@ -535,7 +541,7 @@
 
                         {/* 歲月星光紀錄儀 (時光軸) */}
                         <section>
-                            <div className="flex justify-between items-center mb-5 px-1">
+                            <div className="flex justify-between items-center mb-5 px-1 text-left">
                                 <div className="flex items-center gap-2 text-slate-400"><Icon name="Calendar" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">歲月星光紀錄儀</h3></div>
                                 <button onClick={() => setShowEvtForm(!showEvtForm)} className="text-xs font-black bg-white border border-slate-200 px-4 py-1.5 rounded-full text-slate-400 hover:text-emerald-500 tap-active shadow-sm transition-all">{showEvtForm ? '取消' : '+ 記下日子'}</button>
                             </div>
@@ -553,11 +559,17 @@
                                 {events.map(event => {
                                     const status = getDateStatus(event.date);
                                     const colorObj = MEMORY_COLORS.find(c => c.id === event.color) || MEMORY_COLORS[0];
+                                    // 判斷是否為即將到來的日子 (未來 7 天內)
                                     const isSoon = status.type === 'future' && status.diff <= 7;
                                     return (
-                                        <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${isSoon ? 'ring-2 ring-rose-200 shadow-rose-50' : ''}`}>
+                                        <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${isSoon ? 'reminder-glow ring-2 ring-rose-200' : ''}`}>
                                             <SafeDeleteBtn onDelete={() => deleteItem('events', event.id)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100" />
-                                            {isSoon && <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1"><Icon name="Sparkles" size={10} fill="currentColor" /> 即將到來</div>}
+                                            {/* 即將到來預告標籤 */}
+                                            {isSoon && (
+                                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1">
+                                                    <Icon name="Sparkles" size={10} fill="currentColor" /> 即將到來
+                                                </div>
+                                            )}
                                             <div className={`w-12 h-12 mb-4 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${colorObj.bg} ${colorObj.text}`}><Icon name="Heart" size={24} fill="currentColor" /></div>
                                             <h4 className="text-[11px] font-black text-slate-500 truncate mb-1">{event.title}</h4>
                                             <p className="text-[9px] font-black text-slate-300 mb-2">{event.date.replace(/-/g, " . ")}</p>
@@ -687,6 +699,7 @@
     </script>
 </body>
 </html>
+
 
 
 
