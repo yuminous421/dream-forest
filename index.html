@@ -1,634 +1,550 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>糖果的夢想森林 🌳</title>
-    
-    <!-- 工具庫 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, serverTimestamp, setDoc, query } from 'firebase/firestore';
+import { 
+  Heart, Plus, Trash2, CheckCircle2, MapPin, Sparkles, Calendar, 
+  TreePine, ChevronDown, Stars, Zap, Wand2, X, Globe, Flag, 
+  Plane, Navigation, Feather, ChevronLeft, Edit3 
+} from 'lucide-react';
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// --- Firebase 配置 (請確保環境變數正確) ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'couple-dream-forest-v1';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAplUiEFdAdT0N6OSGWhKOeijpEF8oFlMk", 
-            authDomain: "dream-forest-66323.firebaseapp.com",
-            projectId: "dream-forest-66323",
-            storageBucket: "dream-forest-66323.appspot.com",
-            messagingSenderId: "138431071216",
-            appId: "1:138431071216:web:0ed8b8dd15b9555198d335"
-        };
+const PARTNERS = {
+  A: { id: 'A', displayName: '糖糖', color: 'rose', accent: 'bg-rose-400', border: 'border-rose-200', text: 'text-rose-400', bg: 'bg-rose-50' },
+  B: { id: 'B', displayName: '果果', color: 'sky', accent: 'bg-sky-400', border: 'border-sky-200', text: 'text-sky-400', bg: 'bg-sky-50' }
+};
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+const MEMORY_COLORS = [
+  { id: 'rose', hex: '#fb7185', bg: 'bg-rose-50', text: 'text-rose-400' },
+  { id: 'sky', hex: '#38bdf8', bg: 'bg-sky-50', text: 'text-sky-400' },
+  { id: 'emerald', hex: '#34d399', bg: 'bg-emerald-50', text: 'text-emerald-400' },
+  { id: 'amber', hex: '#fbbf24', bg: 'bg-amber-50', text: 'text-amber-400' },
+  { id: 'violet', hex: '#a78bfa', bg: 'bg-violet-50', text: 'text-violet-400' }
+];
 
-        window.fb = { db, auth, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, setDoc, serverTimestamp, signInAnonymously, onAuthStateChanged, query };
-    </script>
+// --- 修復：定義 Icon 組件 ---
+const Icon = ({ name, ...props }) => {
+  const icons = {
+    Heart, Plus, Trash2, CheckCircle2, MapPin, Sparkles, Calendar, 
+    TreePine, ChevronDown, Stars, Zap, Wand2, X, Globe, Flag, 
+    Plane, Navigation, Feather, ChevronLeft, Edit3
+  };
+  const LucideIcon = icons[name];
+  return LucideIcon ? <LucideIcon {...props} /> : null;
+};
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #FDFCF8; overflow-x: hidden; }
-        
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        /* 日期選擇器視覺一致性強制方案 */
-        input[type="date"] { 
-            position: relative; 
-            color: #cbd5e1 !important; /* 預設淺灰色 text-slate-300 */
-            color-scheme: light; /* 防止在深色模式下出錯 */
+const ShieldHeartIcon = ({ size = 24, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M12 14.5c.8-1 2.5-1.4 3-1 .6.4.5 1.5 0 2.2-1 1.3-3 2.8-3 2.8s-2-1.5-3-2.8c-.5-.7-.6-1.8 0-2.2.5-.4 2.2 0 3 1z" fill="currentColor" fillOpacity="0.3" />
+  </svg>
+);
+
+// --- 台灣 368 鄉鎮精密座標 ---
+const COUNTY_DATA = {
+  "基隆": { x: 82, y: 8 }, "台北": { x: 75, y: 12 }, "新北": { x: 72, y: 15 }, "桃園": { x: 65, y: 18 },
+  "新竹": { x: 58, y: 22 }, "苗栗": { x: 52, y: 28 }, "台中": { x: 48, y: 38 }, "彰化": { x: 42, y: 45 },
+  "南投": { x: 55, y: 48 }, "雲林": { x: 38, y: 55 }, "嘉義": { x: 40, y: 62 }, "台南": { x: 35, y: 72 },
+  "高雄": { x: 42, y: 82 }, "屏東": { x: 50, y: 92 }, "宜蘭": { x: 78, y: 28 }, "花蓮": { x: 72, y: 52 },
+  "台東": { x: 65, y: 80 }, "澎湖": { x: 18, y: 60 }, "金門": { x: 5, y: 45 }, "馬祖": { x: 8, y: 15 },
+  "蘭嶼": { x: 78, y: 115 }, "綠島": { x: 75, y: 95 }
+};
+
+const TOWNSHIP_DATA = {
+  "淡水": { x: 70, y: 8 }, "礁溪": { x: 77, y: 26 }, "九份": { x: 82, y: 12 }, "西門": { x: 75, y: 13 },
+  "安平": { x: 33, y: 72 }, "墾丁": { x: 55, y: 105 }, "羅東": { x: 79, y: 31 }, "旗津": { x: 40, y: 88 }
+};
+
+const ASIA_COORDS = {
+  "日本": { x: 85, y: 25 }, "東京": { x: 88, y: 28 }, "大阪": { x: 84, y: 32 }, "首爾": { x: 74, y: 26 },
+  "曼谷": { x: 35, y: 68 }, "越南": { x: 45, y: 62 }, "新加坡": { x: 40, y: 98 }
+};
+
+const getMapPos = (name, scope) => {
+  if (!name) return { x: '50%', y: '50%' };
+  const db = scope === 'taiwan' ? { ...COUNTY_DATA, ...TOWNSHIP_DATA } : ASIA_COORDS;
+  for (let key in db) {
+    if (name.includes(key)) return { x: `${db[key].x}%`, y: `${db[key].y}%` };
+  }
+  let basePos = { x: 50, y: 50 };
+  if (scope === 'taiwan') {
+    for (let county in COUNTY_DATA) {
+      if (name.includes(county)) { basePos = COUNTY_DATA[county]; break; }
+    }
+  }
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const offsetX = (Math.abs(hash % 8) - 4);
+  const offsetY = (Math.abs((hash >> 8) % 8) - 4);
+  return { x: `${basePos.x + offsetX}%`, y: `${basePos.y + offsetY}%` };
+};
+
+const getDateStatus = (dateStr) => {
+  if (!dateStr) return { diff: 0, type: 'past' };
+  const target = new Date(dateStr); target.setHours(0,0,0,0);
+  const now = new Date(); now.setHours(0,0,0,0);
+  const diffTime = target.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? { diff: diffDays, type: 'future' } : { diff: Math.abs(diffDays), type: 'past' };
+};
+
+const detectMapScope = (name) => {
+  if (!name) return 'taiwan';
+  for (let key in COUNTY_DATA) if (name.includes(key)) return 'taiwan';
+  for (let key in ASIA_COORDS) if (name.includes(key)) return 'asia';
+  return 'taiwan';
+};
+
+const TaiwanMapSVG = () => (
+  <svg viewBox="0 0 100 120" className="absolute inset-0 w-full h-full opacity-[0.12] pointer-events-none fill-emerald-900">
+    <path d="M72,5 C75,5 82,10 82,15 C82,18 78,22 78,25 C78,35 85,50 82,65 C78,85 70,105 60,115 C55,118 45,115 40,110 C35,100 30,85 30,70 C30,60 35,45 40,35 C45,25 55,15 65,10 C68,8 70,5 72,5 Z" />
+    <circle cx="18" cy="60" r="2.5" /><circle cx="5" cy="45" r="2" /><circle cx="8" cy="15" r="1.5" />
+  </svg>
+);
+
+const AsiaMapSVG = () => (
+  <svg viewBox="0 0 100 120" className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none fill-sky-900">
+    <path d="M5,10 Q30,0 50,15 T80,10 T95,30 L90,50 L70,70 L50,90 L20,85 L5,50 Z" />
+    <path d="M85,20 L92,25 L88,35 L80,30 Z" /><path d="M72,22 L78,28 L72,32 Z" />
+  </svg>
+);
+
+const SafeDeleteBtn = ({ onDelete, className = "" }) => {
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => { if (confirming) { const t = setTimeout(() => setConfirming(false), 3000); return () => clearTimeout(t); } }, [confirming]);
+  return (
+    <button onClick={(e) => { e.stopPropagation(); confirming ? onDelete() : setConfirming(true); }} className={`${className} transition-all flex items-center gap-1 ${confirming ? 'bg-rose-500 text-white px-2 rounded-lg py-1 scale-105 shadow-md' : 'text-slate-200 hover:text-rose-400'}`}>
+      <Trash2 size={14} /> {confirming && <span className="text-[10px] font-black">確認？</span>}
+    </button>
+  );
+};
+
+const InlineLandmineSystem = ({ side, data, onSave, onDelete }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [localText, setLocalText] = useState(data?.innerWorld || '');
+  const config = PARTNERS[side];
+  useEffect(() => { setLocalText(data?.innerWorld || ''); }, [data]);
+  const mines = useMemo(() => localText.split('\n').filter(l => l.trim() !== ''), [localText]);
+  const level = mines.length === 0 ? 0 : mines.length <= 2 ? 1 : mines.length <= 5 ? 2 : 3;
+  
+  return (
+    <div className="w-full mb-4">
+      <div className={`w-full flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all ${isOpen ? `${config.border} bg-white shadow-xl` : 'bg-slate-50 border-transparent hover:bg-white shadow-sm'}`}>
+        <div className="flex items-center gap-4 text-left cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isOpen ? `${config.accent} text-white shadow-lg` : 'bg-white text-slate-400 shadow-inner'}`}>
+            {level === 0 ? <Zap size={22} /> : <Zap className={level === 3 ? "animate-bounce text-rose-500" : ""} size={24} fill="currentColor" />}
+          </div>
+          <div>
+            <span className={`block font-black text-sm uppercase tracking-widest ${isOpen ? config.text : 'text-slate-400'}`}>{config.displayName} 爆炸預警</span>
+            {level > 0 && <span className="text-[10px] font-black text-rose-400 animate-pulse uppercase tracking-tighter">偵測到 {mines.length} 項地雷</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <SafeDeleteBtn onDelete={() => { onDelete(side); setLocalText(''); }} />
+          <button onClick={() => { setIsOpen(true); setIsEdit(!isEdit); }} className={`p-2 transition-colors ${isEdit ? 'text-rose-400' : 'text-slate-300 hover:text-emerald-500'}`}>{isEdit ? <X size={20} /> : <Edit3 size={20} />}</button>
+        </div>
+      </div>
+      {isOpen && (
+        <div className={`mt-4 bg-white p-7 rounded-[3rem] border-2 ${config.border} shadow-2xl animate-in zoom-in-95`}>
+          <div className={`rounded-[2rem] p-6 ${config.bg} border-2 border-dashed ${config.border} min-h-[120px] transition-all flex flex-col items-center justify-center`}>
+            {isEdit ? (
+              <div className="w-full space-y-4">
+                <textarea value={localText} onChange={e => setLocalText(e.target.value)} placeholder="寫下目前不開心的點..." className="w-full h-40 bg-white/70 border-none rounded-2xl p-4 text-sm font-bold outline-none resize-none text-center shadow-inner placeholder:text-slate-300" />
+                <button onClick={async () => { await onSave(side, {...data, innerWorld: localText}); setIsEdit(false); }} className={`w-full py-4 ${config.accent} text-white rounded-2xl font-black text-sm shadow-lg active:scale-95`}>同步雷達</button>
+              </div>
+            ) : (
+              <div className="space-y-4 w-full text-center">
+                {mines.length > 0 ? mines.map((m, i) => (
+                  <div key={i} className="flex items-center justify-center gap-2 text-slate-700 font-bold text-sm italic py-1 border-b border-white/40 last:border-none"><Zap size={10} className="text-rose-400" fill="currentColor" /> {m}</div>
+                )) : <p className="text-slate-400 text-sm font-medium italic px-4 text-center">目前森林氣壓穩定。</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [wishes, setWishes] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [profiles, setProfiles] = useState({ A: {}, B: {} });
+  const [mySide, setMySide] = useState('A');
+  const [loading, setLoading] = useState(true);
+  const [showProfiles, setShowProfiles] = useState(false);
+  const [showGuardian, setShowGuardian] = useState(false);
+  const [isGrowing, setIsGrowing] = useState(false);
+  const [mapMode, setMapMode] = useState('taiwan');
+
+  const progress = useMemo(() => wishes.length === 0 ? 0 : Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100), [wishes]);
+
+  const [newWish, setNewWish] = useState('');
+  const [wishLoc, setWishLoc] = useState('');
+  const [wishDate, setWishDate] = useState('');
+  const [showEvtForm, setShowEvtForm] = useState(false);
+  const [evtT, setEvtT] = useState(''); const [evtD, setEvtD] = useState(''); const [evtC, setEvtC] = useState('rose');
+  const [showCityForm, setShowCityForm] = useState(false);
+  const [cityT, setCityT] = useState(''); const [cityD, setCityD] = useState('');
+  const [newNote, setNewNote] = useState('');
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-        
-        /* 當具有 'has-value' 類名或獲得焦點時，顏色變深 */
-        input[type="date"].has-value,
-        input[type="date"]:focus {
-            color: #475569 !important; /* text-slate-600 */
-            font-weight: 700 !important;
-        }
+      } catch (e) { console.error(e); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
 
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100%; background: transparent; color: transparent; cursor: pointer;
-        }
+  useEffect(() => {
+    if (!user) return;
+    const path = c => collection(db, 'artifacts', appId, 'public', 'data', c);
+    const unsubW = onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); setLoading(false); });
+    const unsubE = onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => { const sA = getDateStatus(a.date); const sB = getDateStatus(b.date); if(sA.type !== sB.type) return sA.type === 'future' ? -1 : 1; return sA.diff - sB.diff; })); });
+    const unsubC = onSnapshot(path('cities'), snap => { setCities(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); });
+    const unsubN = onSnapshot(path('notes'), snap => { setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); });
+    const unsubP = onSnapshot(path('profiles'), snap => { const d = { A: {}, B: {} }; snap.docs.forEach(doc => { d[doc.id] = doc.data(); }); setProfiles(d); });
+    return () => { unsubW(); unsubE(); unsubC(); unsubN(); unsubP(); };
+  }, [user]);
 
-        /* 點擊後 Placeholder 瞬間消失 */
-        input:focus::placeholder, textarea:focus::placeholder {
-            color: transparent;
-            transition: color 0.2s;
-        }
+  const combinedFootprints = useMemo(() => {
+    const manual = cities.map(c => ({ id: c.id, name: c.name, date: c.date, type: 'manual', color: 'emerald', scope: detectMapScope(c.name) }));
+    const wishPins = wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, name: w.location, date: w.targetDate || (w.createdAt?.seconds ? w.createdAt.seconds * 1000 : Date.now()), type: 'wish', color: 'rose', scope: detectMapScope(w.location) }));
+    const map = new Map();
+    [...manual, ...wishPins].forEach(item => { if(!map.has(item.name)) map.set(item.name, item); });
+    return Array.from(map.values());
+  }, [cities, wishes]);
 
-        /* 地雷震動效果 */
-        .mine-level-1 { animation: shake 0.8s infinite ease-in-out; }
-        .mine-level-2 { animation: shake 0.3s infinite linear; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
-        .mine-level-3 { animation: shake 0.1s infinite linear; box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0) rotate(0); }
-            25% { transform: translateX(-3px) rotate(-1deg); }
-            75% { transform: translateX(3px) rotate(1deg); }
-        }
-        
-        /* 悄悄話浮動效果 */
-        .float-cloud { animation: float 6s ease-in-out infinite; }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
+  const currentMapFootprints = useMemo(() => combinedFootprints.filter(f => f.scope === mapMode), [combinedFootprints, mapMode]);
 
-        /* 足跡動畫 */
-        .city-name-fade { animation: nameFade 1.5s forwards; opacity: 0; }
-        .city-dot-pop { animation: dotPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; transform: scale(0); }
-        @keyframes nameFade {
-            0% { opacity: 0; transform: translateY(10px); }
-            40% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0.5; transform: translateY(0); }
-        }
-        @keyframes dotPop { to { opacity: 1; transform: scale(1); } }
+  const addWish = async e => {
+    e.preventDefault(); if (!newWish.trim()) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'wishes'), { text: newWish, location: wishLoc, targetDate: wishDate, creatorSide: mySide, completed: false, createdAt: serverTimestamp() });
+    setNewWish(''); setWishLoc(''); setWishDate('');
+  };
+  const addEvent = async e => {
+    e.preventDefault(); if (!evtT.trim() || !evtD) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { title: evtT, date: evtD, color: evtC, createdAt: serverTimestamp() });
+    setEvtT(''); setEvtD(''); setShowEvtForm(false);
+  };
+  const addCity = async e => {
+    e.preventDefault(); if (!cityT.trim()) return;
+    const list = cityT.split('\n').filter(c => c.trim() !== '');
+    for (const name of list) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'cities'), { name, date: cityD, creatorSide: mySide, createdAt: serverTimestamp() });
+    setCityT(''); setCityD(''); setShowCityForm(false);
+  };
+  const addNote = async e => {
+    e.preventDefault(); if (!newNote.trim()) return;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'notes'), { text: newNote, creatorSide: mySide, seen: false, createdAt: serverTimestamp() });
+    setNewNote('');
+  };
+  const deleteItem = async (col, id) => { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id)); };
+  const toggleDone = async item => { 
+    const next = !item.completed; if(next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); }
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next }); 
+  };
+  const markSeen = async item => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'notes', item.id), { seen: !item.seen }); };
+  const saveProfile = (s, d) => setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', s), d);
+  const clearMines = s => saveProfile(s, { ...profiles[s], innerWorld: "" });
 
-        .ripple { position: absolute; border: 2px solid #34d399; border-radius: 50%; animation: rippleEffect 2s infinite; opacity: 0; }
-        @keyframes rippleEffect {
-            0% { transform: scale(1); opacity: 0.5; }
-            100% { transform: scale(3); opacity: 0; }
-        }
+  if (loading) return (
+    <div className="min-h-screen bg-[#FDFCF8] flex flex-col items-center justify-center text-emerald-400">
+      <Sparkles className="animate-spin mb-4" size={32} />
+      <span className="text-xs font-black tracking-[0.3em] uppercase">夢想森林開啟中...</span>
+    </div>
+  );
 
-        .reminder-glow { animation: reminder-blink 1.5s infinite; border-color: #fb7185 !important; }
-        @keyframes reminder-blink {
-            0%, 100% { box-shadow: 0 0 5px #fb7185; background-color: #fff; }
-            50% { box-shadow: 0 0 20px #fb7185; background-color: #fff1f2; }
-        }
-
-        .tap-active:active { transform: scale(0.95); transition: transform 0.1s; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
-
-        const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
-            const icons = {
-                Heart: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />,
-                ShieldHeart: <React.Fragment><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M12 14.5c.8-1 2.5-1.4 3-1 .6.4.5 1.5 0 2.2-1 1.3-3 2.8-3 2.8s-2-1.5-3-2.8c-.5-.7-.6-1.8 0-2.2.5-.4 2.2 0 3 1z" fill="currentColor" fillOpacity="0.3" /></React.Fragment>,
-                Lock: <React.Fragment><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></React.Fragment>,
-                Landmine: <React.Fragment><circle cx="12" cy="12" r="7" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /><circle cx="12" cy="12" r="2" fill="currentColor"/></React.Fragment>,
-                Plus: <path d="M5 12h14m-7-7v14" />,
-                Trash2: <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />,
-                CheckCircle2: <React.Fragment><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></React.Fragment>,
-                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
-                Calendar: <React.Fragment><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="3" y1="10" x2="21" y2="10" /></React.Fragment>,
-                TreePine: <React.Fragment><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-2l3.3-3.7a1 1 0 0 1 1.4 0L12 13l2.3-2.7a1 1 0 0 1 1.4 0L19 14h-2Z" /><path d="M12 22v-3" /></React.Fragment>,
-                X: <React.Fragment><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></React.Fragment>,
-                Bomb: <React.Fragment><path d="M18 6L21 3M19 9L23 9M16 5L16 1" /><circle cx="9" cy="15" r="8" /></React.Fragment>,
-                Flame: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5Z" />,
-                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
-                ChevronDown: <polyline points="6 9 12 15 18 9" />,
-                MapPin: <React.Fragment><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></React.Fragment>,
-                Globe: <React.Fragment><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></React.Fragment>,
-                Compass: <React.Fragment><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></React.Fragment>,
-                ChevronLeft: <polyline points="15 18 9 12 15 6" />,
-                Edit3: <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />,
-                Navigation: <polygon points="3 11 22 2 13 21 11 13 3 11" />,
-                Stars: <path d="m12 3 1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
-                Feather: <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />,
-                Wand2: <path d="m15 2 6 6m-3-4 5 5l-11 11-4-1 1-4Z" />,
-                Plane: <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-1.2-.3-2.4.6-2.8 1.8-.4 1.2.3 2.4 1.5 2.8l7.5 3.5-3.5 3.5L5 21l1 .5 3.5-2.5 3.5-3.5 3.5 7.5c.4 1.2 1.6 1.9 2.8 1.5 1.2-.4 2.1-1.6 1.8-2.8z" />
-            };
-            return (
-                <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    {icons[name] || null}
-                </svg>
-            );
-        };
-
-        const appId = 'couple-dream-forest-v1';
-        const PARTNERS = {
-            A: { id: 'A', displayName: '糖糖', accent: 'bg-rose-400', border: 'border-rose-200', text: 'text-rose-400', bg: 'bg-rose-50' },
-            B: { id: 'B', displayName: '果果', accent: 'bg-sky-400', border: 'border-sky-200', text: 'text-sky-400', bg: 'bg-sky-50' }
-        };
-
-        const MEMORY_COLORS = [
-            { id: 'rose', hex: '#fb7185', bg: 'bg-rose-50', text: 'text-rose-400' },
-            { id: 'sky', hex: '#38bdf8', bg: 'bg-sky-50', text: 'text-sky-400' },
-            { id: 'emerald', hex: '#34d399', bg: 'bg-emerald-50', text: 'text-emerald-400' },
-            { id: 'amber', hex: '#fbbf24', bg: 'bg-amber-50', text: 'text-amber-400' },
-            { id: 'violet', hex: '#a78bfa', bg: 'bg-violet-50', text: 'text-violet-400' }
-        ];
-
-        const TAIWAN_COORDS = {
-            "台北": { x: 75, y: 12 }, "淡水": { x: 70, y: 8 }, "西門": { x: 75, y: 13 },
-            "新北": { x: 72, y: 15 }, "桃園": { x: 65, y: 18 }, "新竹": { x: 58, y: 22 }, "苗栗": { x: 52, y: 28 },
-            "台中": { x: 48, y: 38 }, "彰化": { x: 42, y: 45 }, "南投": { x: 55, y: 48 }, "雲林": { x: 38, y: 55 }, "嘉義": { x: 40, y: 62 },
-            "台南": { x: 35, y: 72 }, "高雄": { x: 42, y: 82 }, "屏東": { x: 50, y: 92 }, "墾丁": { x: 55, y: 105 },
-            "宜蘭": { x: 78, y: 28 }, "礁溪": { x: 77, y: 26 }, "花蓮": { x: 72, y: 52 }, "台東": { x: 65, y: 80 }, "基隆": { x: 82, y: 8 },
-            "澎湖": { x: 18, y: 60 }, "金門": { x: 5, y: 45 }, "馬祖": { x: 8, y: 15 }
-        };
-
-        const ASIA_COORDS = {
-            "日本": { x: 85, y: 25 }, "東京": { x: 88, y: 28 }, "大阪": { x: 84, y: 32 }, "京都": { x: 82, y: 33 }, "沖繩": { x: 72, y: 58 },
-            "韓國": { x: 74, y: 28 }, "首爾": { x: 74, y: 26 }, "釜山": { x: 76, y: 32 },
-            "泰國": { x: 35, y: 65 }, "曼谷": { x: 35, y: 68 }, "清邁": { x: 30, y: 58 },
-            "越南": { x: 45, y: 62 }, "河內": { x: 42, y: 55 }, "胡志明": { x: 48, y: 75 },
-            "馬來西亞": { x: 42, y: 88 }, "吉隆坡": { x: 40, y: 92 },
-            "新加坡": { x: 40, y: 98 },
-            "菲律賓": { x: 65, y: 75 }, "馬尼拉": { x: 65, y: 72 },
-            "中國": { x: 50, y: 40 }, "上海": { x: 65, y: 45 }, "北京": { x: 60, y: 20 }, "香港": { x: 58, y: 65 }
-        };
-
-        const getDateStatus = (dateStr) => {
-            if (!dateStr) return { diff: 0, type: 'past' };
-            const target = new Date(dateStr); target.setHours(0,0,0,0);
-            const now = new Date(); now.setHours(0,0,0,0);
-            const diffTime = target.getTime() - now.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays > 0 ? { diff: diffDays, type: 'future' } : { diff: Math.abs(diffDays), type: 'past' };
-        };
-
-        const detectMapScope = (name) => {
-            for (let key in TAIWAN_COORDS) if (name.includes(key)) return 'taiwan';
-            for (let key in ASIA_COORDS) if (name.includes(key)) return 'asia';
-            return 'taiwan';
-        };
-
-        const getMapPos = (name, scope) => {
-            const db = scope === 'taiwan' ? TAIWAN_COORDS : ASIA_COORDS;
-            for (let key in db) if (name.includes(key)) return { x: `${db[key].x}%`, y: `${db[key].y}%` };
-            let hash = 0; for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-            return { x: `${30 + (Math.abs(hash % 40))}%`, y: `${25 + (Math.abs((hash >> 8) % 50))}%` };
-        };
-
-        const TaiwanMapSVG = () => (
-            <svg viewBox="0 0 100 120" className="absolute inset-0 w-full h-full opacity-[0.1] pointer-events-none fill-emerald-900">
-                <path d="M72,5 C75,5 82,10 82,15 C82,18 78,22 78,25 C78,35 85,50 82,65 C78,85 70,105 60,115 C55,118 45,115 40,110 C35,100 30,85 30,70 C30,60 35,45 40,35 C45,25 55,15 65,10 C68,8 70,5 72,5 Z" />
-                <circle cx="18" cy="60" r="2.5" /><circle cx="5" cy="45" r="2" /><circle cx="8" cy="15" r="1.5" />
-            </svg>
-        );
-
-        const AsiaMapSVG = () => (
-            <svg viewBox="0 0 100 120" className="absolute inset-0 w-full h-full opacity-[0.08] pointer-events-none fill-sky-900">
-                <path d="M5,10 Q30,0 50,15 T80,10 T95,30 L90,50 L70,70 L50,90 L20,85 L5,50 Z" />
-                <path d="M85,20 L92,25 L88,35 L80,30 Z" />
-                <path d="M72,22 L78,28 L72,32 Z" />
-                <path d="M62,65 L70,70 L65,80 Z" />
-                <path d="M35,80 L45,85 L40,95 Z" />
-            </svg>
-        );
-
-        const SafeDeleteBtn = ({ onDelete, className = "" }) => {
-            const [confirming, setConfirming] = useState(false);
-            useEffect(() => { if (confirming) { const t = setTimeout(() => setConfirming(false), 3000); return () => clearTimeout(t); } }, [confirming]);
-            return (
-                <button onClick={(e) => { e.stopPropagation(); confirming ? onDelete() : setConfirming(true); }} className={`${className} transition-all flex items-center gap-1 ${confirming ? 'bg-rose-500 text-white px-2 rounded-lg py-1 scale-105 shadow-md' : 'text-slate-200 hover:text-rose-400'}`}>
-                    <Icon name="Trash2" size={14} /> {confirming && <span className="text-[10px] font-black">確認？</span>}
-                </button>
-            );
-        };
-
-        const InlineLandmineSystem = ({ side, data, onSave, onDelete }) => {
-            const [isOpen, setIsOpen] = useState(false);
-            const [isEdit, setIsEdit] = useState(false);
-            const [localText, setLocalText] = useState(data?.innerWorld || '');
-            const config = PARTNERS[side];
-            useEffect(() => { setLocalText(data?.innerWorld || ''); }, [data]);
-            const mines = useMemo(() => localText.split('\n').filter(l => l.trim() !== ''), [localText]);
-            const level = mines.length === 0 ? 0 : mines.length <= 2 ? 1 : mines.length <= 5 ? 2 : 3;
-            const renderIcon = () => {
-                if (level === 0) return <Icon name="Landmine" size={22} />;
-                if (level === 1) return <Icon name="Landmine" className="text-yellow-400 mine-level-1" size={24} fill="currentColor" />;
-                if (level === 2) return <Icon name="Bomb" className="text-orange-500 mine-level-2" size={26} fill="currentColor" />;
-                return <Icon name="Flame" className="text-rose-600 mine-level-3 kaboom-pulse" size={30} fill="currentColor" />;
-            };
-            return (
-                <div className="w-full mb-4 text-center">
-                    <div className={`w-full flex items-center justify-between p-6 rounded-[2.5rem] border-2 transition-all ${isOpen ? `${config.border} bg-white shadow-xl` : 'bg-slate-50 border-transparent hover:bg-white shadow-sm'}`}>
-                        <div className="flex items-center gap-4 text-left cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isOpen ? `${config.accent} text-white shadow-lg` : 'bg-white text-slate-400 shadow-inner'}`}>{renderIcon()}</div>
-                            <div>
-                                <span className={`block font-black text-sm uppercase tracking-widest ${isOpen ? config.text : 'text-slate-400'}`}>{config.displayName} 爆炸預警</span>
-                                {level > 0 && <span className="text-[10px] font-black text-rose-400 animate-pulse uppercase tracking-tighter">偵測到 {mines.length} 項情緒地雷</span>}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <SafeDeleteBtn onDelete={() => { onDelete(side); setLocalText(''); }} />
-                            <button onClick={() => { setIsOpen(true); setIsEdit(!isEdit); }} className={`p-2 transition-colors ${isEdit ? 'text-rose-400' : 'text-slate-300 hover:text-emerald-500'}`}>{isEdit ? <Icon name="X" size={20} /> : <Icon name="Edit3" size={20} />}</button>
-                        </div>
+  return (
+    <div className="min-h-screen bg-[#FDFCF8] text-slate-600 pb-32 relative text-center">
+      {/* 物理卷宗彈窗 */}
+      {showProfiles && (
+        <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
+          <div className="max-w-xl mx-auto px-6 py-12 text-center">
+            <div className="flex items-center justify-between mb-10 px-2 text-left">
+              <button onClick={() => setShowProfiles(false)} className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 tap-active shadow-sm transition-all"><ChevronLeft size={24} /></button>
+              <h2 className="font-black text-xl text-slate-800 tracking-widest uppercase">物理絕密卷宗</h2><div className="w-12 h-12"></div>
+            </div>
+            {Object.values(PARTNERS).map(config => {
+              const data = profiles[config.id] || {};
+              const fields = [{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}];
+              return (
+                <div key={config.id} className={`w-full bg-white rounded-[2.5rem] p-8 border-2 ${config.border} shadow-xl mb-6 relative overflow-hidden`}>
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className={`w-12 h-12 rounded-[1.2rem] ${config.accent} flex items-center justify-center text-white shadow-lg`}><ShieldHeartIcon size={24} /></div>
+                      <h3 className={`font-black text-xl ${config.text}`}>{config.displayName} 卷宗</h3>
                     </div>
-                    {isOpen && (
-                        <div className={`mt-4 bg-white p-7 rounded-[3rem] border-2 ${config.border} shadow-2xl animate-in zoom-in-95`}>
-                            <div className={`rounded-[2rem] p-6 ${config.bg} border-2 border-dashed ${config.border} min-h-[120px] transition-all flex flex-col items-center justify-center`}>
-                                {isEdit ? (
-                                    <div className="w-full space-y-4">
-                                        <textarea value={localText} onChange={e => setLocalText(e.target.value)} placeholder="在此輸入目前不開心的點..." className="w-full h-40 bg-white/70 border-none rounded-2xl p-4 text-sm font-bold outline-none resize-none text-center shadow-inner placeholder:text-slate-300" />
-                                        <button onClick={async () => { await onSave(side, {...data, innerWorld: localText}); setIsEdit(false); }} className={`w-full py-4 ${config.accent} text-white rounded-2xl font-black text-sm shadow-lg active:scale-95`}>同步並埋下地雷</button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4 w-full text-center">
-                                        {mines.length > 0 ? mines.map((m, i) => (
-                                            <div key={i} className="flex items-center justify-center gap-2 text-slate-700 font-bold text-sm italic py-1 border-b border-white/40 last:border-none"><Icon name="Zap" size={10} className="text-rose-400" fill="currentColor" /> {m}</div>
-                                        )) : <p className="text-slate-400 text-sm font-medium italic">目前森林氣壓穩定。</p>}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    <SafeDeleteBtn onDelete={() => saveProfile(config.id, {})} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {fields.map(f => (
+                      <div key={f.k} className="flex flex-col border-b border-slate-50 pb-3 text-center">
+                        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">{f.l}</span>
+                        <input value={data[f.k] || ''} onChange={e => saveProfile(config.id, {...data, [f.k]: e.target.value})} className="bg-slate-50 border-none rounded-xl px-3 py-1 text-center text-sm font-bold outline-none placeholder:text-slate-300" placeholder="待填寫" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-            );
-        };
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [wishes, setWishes] = useState([]);
-            const [events, setEvents] = useState([]);
-            const [cities, setCities] = useState([]);
-            const [notes, setNotes] = useState([]);
-            const [profiles, setProfiles] = useState({ A: {}, B: {} });
-            const [mySide, setMySide] = useState('A');
-            const [loading, setLoading] = useState(true);
-            const [dataLoaded, setDataLoaded] = useState(false);
-            const [errorMsg, setErrorMsg] = useState("");
-            const [showProfiles, setShowProfiles] = useState(false);
-            const [showGuardian, setShowGuardian] = useState(false);
-            const [isGrowing, setIsGrowing] = useState(false);
-            const [mapMode, setMapMode] = useState('taiwan');
-
-            const progress = useMemo(() => wishes.length === 0 ? 0 : Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100), [wishes]);
-
-            const [newWish, setNewWish] = useState('');
-            const [wishLoc, setWishLoc] = useState('');
-            const [wishDate, setWishDate] = useState('');
-            const [showEvtForm, setShowEvtForm] = useState(false);
-            const [evtT, setEvtT] = useState(''); const [evtD, setEvtD] = useState(''); const [evtC, setEvtC] = useState('rose');
-            const [showCityForm, setShowCityForm] = useState(false);
-            const [cityT, setCityT] = useState(''); const [cityD, setCityD] = useState('');
-            const [newNote, setNewNote] = useState('');
-
-            useEffect(() => {
-                const initAuth = async () => { if (window.fb) { try { await window.fb.signInAnonymously(window.fb.auth); window.fb.onAuthStateChanged(window.fb.auth, u => { if (u) setUser(u); }); } catch (e) { setErrorMsg("連線失敗。"); } } };
-                const timer = setInterval(() => { if (window.fb) { clearInterval(timer); initAuth(); } }, 500);
-                return () => clearInterval(timer);
-            }, []);
-
-            useEffect(() => {
-                if (!user || !window.fb) return;
-                const { db, collection, onSnapshot } = window.fb;
-                const path = c => collection(db, 'artifacts', appId, 'public', 'data', c);
-                onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); setLoading(false); setDataLoaded(true); });
-                onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => { const sA = getDateStatus(a.date); const sB = getDateStatus(b.date); if(sA.type !== sB.type) return sA.type === 'future' ? -1 : 1; return sA.diff - sB.diff; })); });
-                onSnapshot(path('cities'), snap => { setCities(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); });
-                onSnapshot(path('notes'), snap => { setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))); });
-                onSnapshot(path('profiles'), snap => { const d = { A: {}, B: {} }; snap.docs.forEach(doc => { d[doc.id] = doc.data(); }); setProfiles(d); });
-            }, [user]);
-
-            const combinedFootprints = useMemo(() => {
-                const manual = cities.map(c => ({ id: c.id, name: c.name, date: c.date, type: 'manual', color: 'emerald', scope: detectMapScope(c.name) }));
-                const wishPins = wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, name: w.location, date: w.targetDate || w.createdAt?.seconds * 1000, type: 'wish', color: 'rose', scope: detectMapScope(w.location) }));
-                const map = new Map();
-                [...manual, ...wishPins].forEach(item => { if(!map.has(item.name)) map.set(item.name, item); });
-                return Array.from(map.values());
-            }, [cities, wishes]);
-
-            const currentMapFootprints = useMemo(() => combinedFootprints.filter(f => f.scope === mapMode), [combinedFootprints, mapMode]);
-
-            const addWish = async e => {
-                e.preventDefault(); if (!newWish.trim()) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes'), { text: newWish, location: wishLoc, targetDate: wishDate, creatorSide: mySide, completed: false, createdAt: window.fb.serverTimestamp() });
-                setNewWish(''); setWishLoc(''); setWishDate('');
-            };
-            const addEvent = async e => {
-                e.preventDefault(); if (!evtT.trim() || !evtD) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'events'), { title: evtT, date: evtD, color: evtC, createdAt: window.fb.serverTimestamp() });
-                setEvtT(''); setEvtD(''); setShowEvtForm(false);
-            };
-            const addCity = async e => {
-                e.preventDefault(); if (!cityT.trim()) return;
-                const list = cityT.split('\n').filter(c => c.trim() !== '');
-                for (const name of list) await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'cities'), { name, date: cityD, creatorSide: mySide, createdAt: window.fb.serverTimestamp() });
-                setCityT(''); setCityD(''); setShowCityForm(false);
-            };
-            const addNote = async e => {
-                e.preventDefault(); if (!newNote.trim()) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes'), { text: newNote, creatorSide: mySide, seen: false, createdAt: window.fb.serverTimestamp() });
-                setNewNote('');
-            };
-            const deleteItem = async (col, id) => { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', col, id)); };
-            const toggleDone = async item => { 
-                const next = !item.completed; if(next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); }
-                await window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next }); 
-            };
-            const markSeen = async item => { await window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes', item.id), { seen: !item.seen }); };
-            const saveProfile = (s, d) => window.fb.setDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'profiles', s), d);
-            const clearMines = s => saveProfile(s, { ...profiles[s], innerWorld: "" });
-            const clearProfile = s => window.fb.setDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'profiles', s), { height:"", weight:"", shoeSize:"", favColor:"", innerWorld: profiles[s]?.innerWorld || "" });
-
-            if (loading) return (
-                <div className="min-h-screen bg-[#FDFCF8] flex flex-col items-center justify-center text-emerald-400">
-                    <Icon name="Sparkles" className="animate-spin mb-4" size={32} />
-                    <span className="text-xs font-black tracking-[0.3em] uppercase text-center text-center">開啟森林中...</span>
-                </div>
-            );
-
-            return (
-                <div className="min-h-screen bg-[#FDFCF8] text-slate-600 pb-32 relative text-center">
-                    {showProfiles && (
-                        <div className="fixed inset-0 z-[100] bg-white/60 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
-                            <div className="max-w-xl mx-auto px-6 py-12 text-center text-left">
-                                <div className="flex items-center justify-between mb-10 px-2">
-                                    <button onClick={() => setShowProfiles(false)} className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 tap-active shadow-sm transition-all"><Icon name="ChevronLeft" size={24} /></button>
-                                    <h2 className="font-black text-xl text-slate-800 tracking-widest uppercase">物理絕密卷署</h2><div className="w-12 h-12"></div>
-                                </div>
-                                {Object.values(PARTNERS).map(config => {
-                                    const data = profiles[config.id] || {};
-                                    const fields = [{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}];
-                                    return (
-                                        <div key={config.id} className={`w-full bg-white rounded-[2.5rem] p-8 border-2 ${config.border} shadow-xl mb-6 relative overflow-hidden text-center`}>
-                                            <div className="flex justify-between items-center mb-6">
-                                                <div className="flex items-center gap-4 text-left">
-                                                    <div className={`w-12 h-12 rounded-[1.2rem] ${config.accent} flex items-center justify-center text-white shadow-lg`}><Icon name="ShieldHeart" size={24} /></div>
-                                                    <h3 className={`font-black text-xl ${config.text}`}>{config.displayName} 卷宗</h3>
-                                                </div>
-                                                <SafeDeleteBtn onDelete={() => clearProfile(config.id)} />
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-4 text-center">
-                                                {fields.map(f => (
-                                                    <div key={f.k} className="flex flex-col border-b border-slate-50 pb-3 text-center">
-                                                        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1 text-center">{f.l}</span>
-                                                        <input value={data[f.k] || ''} onChange={e => saveProfile(config.id, {...data, [f.k]: e.target.value})} className="bg-slate-50 border-none rounded-xl px-3 py-1 text-center text-sm font-bold outline-none placeholder:text-slate-300" placeholder="待填寫" />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {showGuardian && (
-                        <div className="fixed inset-0 z-[100] bg-emerald-900/10 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
-                            <div className="max-w-xl mx-auto px-6 py-12 text-center">
-                                <div className="flex items-center justify-between mb-8 px-2 text-center">
-                                    <button onClick={() => setShowGuardian(false)} className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-emerald-500 tap-active shadow-sm transition-all"><Icon name="X" size={24} /></button>
-                                    <div>
-                                        <h2 className="font-black text-xl text-emerald-800 tracking-widest uppercase text-center">悄悄話小聲說</h2>
-                                        <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Guardian Whispers</p>
-                                    </div>
-                                    <div className="w-12 h-12"></div>
-                                </div>
-                                <div className="bg-white rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100 mb-10 text-center">
-                                    <form onSubmit={addNote} className="space-y-4">
-                                        <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="寫下不好意思開口的小願望..." className="w-full h-32 bg-slate-50 rounded-[2rem] p-5 text-sm font-bold border-none outline-none focus:bg-white transition-all text-center placeholder:text-slate-300" />
-                                        <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all`}>傳遞這份悄悄話</button>
-                                    </form>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                                    {notes.map((note, idx) => {
-                                        const side = PARTNERS[note.creatorSide || 'A'];
-                                        return (
-                                            <div key={note.id} className={`p-6 rounded-[2.5rem] border-2 float-cloud bg-white transition-all ${note.seen ? 'opacity-40 grayscale' : `${side.border} shadow-lg shadow-emerald-50/20`}`} style={{ animationDelay: `${idx * 0.5}s` }}>
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</span>
-                                                    <SafeDeleteBtn onDelete={() => deleteItem('notes', note.id)} />
-                                                </div>
-                                                <p className={`text-slate-700 font-bold mb-6 text-sm leading-relaxed ${note.seen ? 'line-through' : ''}`}>{note.text}</p>
-                                                <button onClick={() => markSeen(note)} className={`w-full py-2.5 rounded-xl text-[10px] font-black transition-all ${note.seen ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>{note.seen ? '對方已接收心意' : '我收到了，我會努力！'}</button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50 shadow-sm">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500 shadow-inner animate-pulse"><Icon name="Heart" size={20} /></div>
-                            <h1 className="font-black text-lg text-emerald-800 leading-none tracking-tighter">夢想森林</h1>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setShowGuardian(true)} className="p-2.5 bg-yellow-50 rounded-2xl text-yellow-500 border border-yellow-100 shadow-sm hover:bg-yellow-400 hover:text-white transition-all tap-active"><Icon name="Wand2" size={22} /></button>
-                            <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100 shadow-sm hover:bg-emerald-500 hover:text-white transition-all tap-active"><Icon name="ShieldHeart" size={22} /></button>
-                            <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-100 shadow-inner">
-                                {Object.values(PARTNERS).map(p => (
-                                    <button key={p.id} onClick={() => setMySide(p.id)} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all tap-active ${mySide === p.id ? `${p.accent} text-white shadow-md` : 'text-slate-300'}`}>{p.displayName}</button>
-                                ))}
-                            </div>
-                        </div>
-                    </header>
-
-                    <main className="max-w-xl mx-auto px-6 mt-8 space-y-12 text-center">
-                        <div className="flex flex-col items-center justify-center py-12 bg-emerald-50/20 rounded-[3.5rem] border border-emerald-100/50 shadow-inner relative overflow-hidden text-center mx-auto">
-                             <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-400/40 text-left font-black tracking-widest"><Icon name="TreePine" size={14} /><span className="text-[10px] uppercase">Dream Forest</span></div>
-                             <Icon name="TreePine" className={`text-emerald-600 transition-all duration-700 ${progress > 50 ? 'scale-[1.8]' : progress > 20 ? 'scale-125' : 'scale-100'} ${isGrowing ? 'animate-bounce' : ''}`} size={64} />
-                             <div className="mt-12 px-6 py-2 bg-white/80 rounded-full border border-emerald-200 shadow-sm flex items-center gap-3 mx-auto text-center"><div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div><p className="text-xs font-black text-emerald-800 tracking-tight text-center text-center">幸福能量：{progress}%</p></div>
-                        </div>
-
-                        <section>
-                            <div className="flex justify-between items-center mb-5 px-1 text-left">
-                                <div className="flex items-center gap-2 text-slate-400"><Icon name="Calendar" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">歲月星光紀錄儀</h3></div>
-                                <button onClick={() => setShowEvtForm(!showEvtForm)} className="text-xs font-black bg-white border border-slate-200 px-4 py-1.5 rounded-full text-slate-400 hover:text-emerald-500 tap-active shadow-sm transition-all">{showEvtForm ? '取消' : '+ 記下日子'}</button>
-                            </div>
-                            {showEvtForm && (
-                                <form onSubmit={addEvent} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-5 animate-in slide-in-from-top-4 relative z-20 text-center">
-                                    <input placeholder="回憶標題..." className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center placeholder:text-slate-300" value={evtT} onChange={e=>setEvtT(e.target.value)} required />
-                                    <input type="date" className={`w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner text-center cursor-pointer transition-all ${evtD ? 'has-value' : ''}`} value={evtD} onChange={e=>setEvtD(e.target.value)} required />
-                                    <div className="flex justify-center gap-4 py-2">
-                                        {MEMORY_COLORS.map(c => (
-                                            <button key={c.id} type="button" onClick={() => setEvtC(c.id)} className={`w-8 h-8 rounded-full border-4 transition-all ${evtC === c.id ? 'scale-125 border-emerald-100 shadow-md' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />
-                                        ))}
-                                    </div>
-                                    <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl tap-active active:scale-95 transition-all">儲存時光</button>
-                                </form>
-                            )}
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
-                                {events.map(event => {
-                                    const status = getDateStatus(event.date);
-                                    const colorObj = MEMORY_COLORS.find(c => c.id === event.color) || MEMORY_COLORS[0];
-                                    const isSoon = status.type === 'future' && status.diff <= 7;
-                                    return (
-                                        <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${isSoon ? 'reminder-glow shadow-rose-100 border-rose-200' : ''}`}>
-                                            <SafeDeleteBtn onDelete={() => deleteItem('events', event.id)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100" />
-                                            {isSoon && <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1"><Icon name="Bell" size={10} fill="currentColor" /> 即將到來</div>}
-                                            <div className={`w-12 h-12 mb-4 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${colorObj.bg} ${colorObj.text}`}><Icon name="Heart" size={24} fill="currentColor" /></div>
-                                            <h4 className="text-[11px] font-black text-slate-500 truncate mb-1 text-center">{event.title}</h4>
-                                            <p className="text-[9px] font-black text-slate-300 mb-2 text-center">{event.date.replace(/-/g, " . ")}</p>
-                                            <div className="flex flex-col text-center"><p className={`text-2xl font-black tracking-tighter ${isSoon ? 'text-rose-400' : 'text-slate-800'}`}>{status.diff.toLocaleString()}</p><span className="text-[10px] font-black opacity-30 uppercase tracking-widest leading-none text-center">{status.type === 'future' ? '倒數中' : '累計天數'}</span></div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-
-                        <section className="space-y-4">
-                            <div className="flex items-center gap-2 mb-2 px-1 text-slate-400 justify-center font-black uppercase tracking-widest text-xs">森林絕密：爆炸預警系統</div>
-                            <InlineLandmineSystem side="A" data={profiles.A} onSave={saveProfile} onDelete={clearMines} />
-                            <InlineLandmineSystem side="B" data={profiles.B} onSave={saveProfile} onDelete={clearMines} />
-                        </section>
-
-                        <section>
-                            <div className="flex items-center gap-2 mb-4 px-1 text-slate-400 justify-center font-black uppercase tracking-widest text-xs"><Icon name="Plus" size={16} /> 投遞許願瓶</div>
-                            <div className={`bg-white rounded-[3rem] p-8 shadow-2xl border-2 transition-all duration-700 ${PARTNERS[mySide].border}`}>
-                                <form onSubmit={addWish} className="space-y-4 text-center">
-                                    <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`一起去做的夢？`} className="w-full p-4 bg-slate-50/50 rounded-2xl border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300 text-center" />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        <div className="relative"><input value={wishLoc} onChange={e=>setWishLoc(e.target.value)} placeholder="地點？ (選填)" className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm font-bold text-center placeholder:text-slate-300" /><Icon name="MapPin" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
-                                        <div className="relative">
-                                            <input type="date" value={wishDate} onChange={e=>setWishDate(e.target.value)} className={`w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm text-center cursor-pointer transition-all ${wishDate ? 'has-value' : ''}`} />
-                                            <Icon name="Calendar" size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                                        </div>
-                                    </div>
-                                    <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active active:scale-95 transition-all`}>擲向森林 🍾</button>
-                                </form>
-                            </div>
-                        </section>
-
-                        <div className="space-y-8">
-                            {wishes.map(item => {
-                                const side = PARTNERS[item.creatorSide || 'A'];
-                                const status = item.targetDate ? getDateStatus(item.targetDate) : null;
-                                return (
-                                    <div key={item.id} className={`relative p-8 rounded-[3.5rem] border transition-all ${item.completed ? 'opacity-40 grayscale bg-slate-50 border-slate-100 shadow-none' : `bg-white ${side.border} shadow-lg shadow-emerald-50/20`}`}>
-                                        <div className="flex justify-between items-start mb-5 px-2">
-                                            <span className={`px-4 py-1 rounded-full ${item.completed ? 'bg-slate-200 text-slate-400' : `${side.accent} text-white`} text-[10px] font-black uppercase tracking-widest`}>願願瓶</span>
-                                            <SafeDeleteBtn onDelete={() => deleteItem('wishes', item.id)} />
-                                        </div>
-                                        <p className={`text-slate-700 font-black mb-6 text-xl text-left px-2 leading-relaxed ${item.completed ? 'line-through text-slate-300' : ''}`}>{item.text}</p>
-                                        {(item.location || item.targetDate) && (
-                                            <div className="flex flex-wrap gap-3 mb-8 px-2 text-left text-left">
-                                                {item.location && <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-emerald-600 text-xs font-bold text-left"><Icon name="MapPin" size={12} fill="currentColor" /> {item.location}</div>}
-                                                {item.targetDate && <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 text-xs font-bold text-left"><Icon name="Calendar" size={12} className="text-rose-300" /> {item.targetDate.replace(/-/g, " . ")} {status?.type === 'future' && <span className="ml-1 text-rose-400 text-[10px] font-black">(剩 {status.diff} 天)</span>}</div>}
-                                            </div>
-                                        )}
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-left px-2">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</div>
-                                                <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{side.displayName}</span>
-                                            </div>
-                                            <button onClick={() => toggleDone(item)} className={`px-7 py-3 rounded-full text-[13px] font-black border transition-all tap-active ${item.completed ? 'bg-emerald-500 text-white border-transparent shadow-none' : 'bg-white text-slate-300 border-slate-100 hover:border-emerald-200 hover:text-emerald-600'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <section className="mb-24 px-1 text-center">
-                            <div className="flex justify-between items-center mb-5 text-left px-2">
-                                <div className="flex items-center gap-2 text-slate-400 font-black uppercase tracking-widest text-[10px]"><Icon name="Compass" size={16} /> 夢想足跡：{mapMode === 'taiwan' ? '台灣全境' : '東亞國際'}</div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200 shadow-inner">
-                                        <button onClick={() => setMapMode('taiwan')} className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${mapMode === 'taiwan' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'}`}>台灣</button>
-                                        <button onClick={() => setMapMode('asia')} className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${mapMode === 'asia' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400'}`}>國際</button>
-                                    </div>
-                                    <button onClick={() => setShowCityForm(!showCityForm)} className="text-xs font-black bg-white border border-slate-200 px-4 py-1.5 rounded-full text-slate-400 hover:text-emerald-500 tap-active shadow-sm transition-all">{showCityForm ? '取消' : '+ 新增'}</button>
-                                </div>
-                            </div>
-                            {showCityForm && (
-                                <form onSubmit={addCity} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-4 animate-in slide-in-from-top-4 relative z-20 text-center">
-                                    <textarea placeholder="輸入城市或景點..." className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center h-24 placeholder:text-slate-300" value={cityT} onChange={e=>setCityT(e.target.value)} required />
-                                    <input type="date" className={`w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner text-center cursor-pointer transition-all ${cityD ? 'has-value' : ''}`} value={cityD} onChange={e=>setCityD(e.target.value)} />
-                                    <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl tap-active active:scale-95 transition-all">點亮回憶</button>
-                                </form>
-                            )}
-                            <div className="relative w-full h-[520px] bg-white rounded-[3.5rem] border-2 border-emerald-50 shadow-inner overflow-hidden mb-6 group mx-auto text-center">
-                                {mapMode === 'taiwan' ? <TaiwanMapSVG /> : <AsiaMapSVG />}
-                                <div className="relative w-full h-full">
-                                    {currentMapFootprints.map((footprint, index) => {
-                                        const pos = getMapPos(footprint.name, mapMode);
-                                        const status = getDateStatus(footprint.date);
-                                        return (
-                                            <div key={footprint.id} className="absolute group/dot" style={{ left: pos.x, top: pos.y }}>
-                                                <div className="relative flex flex-col items-center">
-                                                    <span className="city-name-fade absolute -top-8 whitespace-nowrap text-[10px] font-black text-emerald-600 bg-white/80 px-2 py-0.5 rounded-full shadow-sm z-10 pointer-events-none" style={{ animationDelay: `${index * 0.2}s` }}>{footprint.name}</span>
-                                                    <div className="city-dot-pop" style={{ animationDelay: `${index * 0.2 + 0.5}s` }}>
-                                                        <div className="ripple"></div>
-                                                        <div className={`w-6 h-6 rounded-full shadow-lg ring-4 ring-white flex items-center justify-center hover:scale-150 transition-transform cursor-pointer overflow-visible z-20 ${footprint.type === 'wish' ? 'bg-rose-400' : 'bg-emerald-400'}`}>
-                                                            <Icon name={footprint.type === 'wish' ? 'Plane' : 'TreePine'} size={12} fill="white" className="text-white" />
-                                                        </div>
-                                                        <div className="absolute top-9 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-xl border border-emerald-50 whitespace-nowrap opacity-0 group-hover/dot:opacity-100 transition-all scale-75 group-hover/dot:scale-100 z-30 pointer-events-none text-left">
-                                                            <p className="text-[11px] font-black text-emerald-800">{footprint.name}</p>
-                                                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{status.diff.toLocaleString()} Days</p>
-                                                            {footprint.type === 'wish' && <p className="text-[7px] text-rose-500 font-black uppercase mt-1">願望達成連動 ✨</p>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </section>
-                    </main>
-
-                    {/* 底部導航 */}
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-50 text-left">
-                        <div className="bg-white/90 backdrop-blur-2xl p-5 rounded-[2.5rem] shadow-2xl border border-emerald-100/50 flex items-center gap-6 ring-1 ring-emerald-50/50 transition-all">
-                            <div className="flex-1 text-center">
-                                <div className="flex justify-between items-center mb-2 px-1 text-center">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">森林總能量</span>
-                                    <span className="text-[10px] font-black text-emerald-500">{progress}%</span>
-                                </div>
-                                <div className="h-3 bg-emerald-50 rounded-full overflow-hidden p-0.5 border shadow-inner"><div className="h-full bg-gradient-to-r from-emerald-300 to-green-500 rounded-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${progress}%` }} /></div>
-                            </div>
-                            <div className={`p-3 rounded-2xl shadow-lg ring-4 ring-white transition-all duration-500 bg-emerald-500 text-white shadow-emerald-100`}><Icon name="Heart" size={20} fill="currentColor" /></div>
-                        </div>
+      {/* 守護者悄悄話 */}
+      {showGuardian && (
+        <div className="fixed inset-0 z-[100] bg-emerald-900/10 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
+          <div className="max-w-xl mx-auto px-6 py-12 text-center">
+            <div className="flex items-center justify-between mb-8 px-2">
+              <button onClick={() => setShowGuardian(false)} className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-emerald-50 tap-active shadow-sm transition-all"><X size={24} /></button>
+              <div>
+                <h2 className="font-black text-xl text-emerald-800 tracking-widest uppercase">悄悄話面板</h2>
+                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Guardian Whispers</p>
+              </div>
+              <div className="w-12 h-12"></div>
+            </div>
+            <div className="bg-white rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100 mb-10 text-center">
+              <form onSubmit={addNote} className="space-y-4">
+                <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="寫下不好意思開口的小願望..." className="w-full h-32 bg-slate-50 rounded-[2rem] p-5 text-sm font-bold border-none outline-none focus:bg-white transition-all text-center placeholder:text-slate-300" />
+                <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all`}>傳遞悄悄話</button>
+              </form>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              {notes.map((note, idx) => {
+                const side = PARTNERS[note.creatorSide || 'A'];
+                return (
+                  <div key={note.id} className={`p-6 rounded-[2.5rem] border-2 float-cloud bg-white transition-all ${note.seen ? 'opacity-40 grayscale' : `${side.border} shadow-lg shadow-emerald-50/20`}`} style={{ animationDelay: `${idx * 0.5}s` }}>
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</span>
+                      <SafeDeleteBtn onDelete={() => deleteItem('notes', note.id)} />
                     </div>
-                </div>
-            );
-        }
+                    <p className={`text-slate-700 font-bold mb-6 text-sm leading-relaxed ${note.seen ? 'line-through' : ''}`}>{note.text}</p>
+                    <button onClick={() => markSeen(note)} className={`w-full py-2.5 rounded-xl text-[10px] font-black transition-all ${note.seen ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>{note.seen ? '對方已接收心意' : '我收到了，我會努力！'}</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+      <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50 shadow-sm">
+        <div className="flex items-center gap-3 text-left">
+          <div className="p-2 bg-emerald-50 rounded-xl text-emerald-500 shadow-inner animate-pulse"><Heart size={20} /></div>
+          <h1 className="font-black text-lg text-emerald-800 leading-none tracking-tighter">夢想森林</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowGuardian(true)} className="p-2.5 bg-yellow-50 rounded-2xl text-yellow-500 border border-yellow-100 shadow-sm hover:bg-yellow-400 hover:text-white transition-all tap-active"><Wand2 size={22} /></button>
+          <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100 shadow-sm hover:bg-emerald-500 hover:text-white transition-all tap-active"><ShieldHeartIcon size={22} /></button>
+          <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-100 shadow-inner">
+            {Object.values(PARTNERS).map(p => (
+              <button key={p.id} onClick={() => setMySide(p.id)} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all tap-active ${mySide === p.id ? `${p.accent} text-white shadow-md` : 'text-slate-300'}`}>{p.displayName}</button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-xl mx-auto px-6 mt-8 space-y-12 text-center text-center">
+        {/* 能量小樹 */}
+        <div className="flex flex-col items-center justify-center py-12 bg-emerald-50/20 rounded-[3.5rem] border border-emerald-100/50 shadow-inner relative overflow-hidden text-center mx-auto">
+             <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-400/40 text-left font-black tracking-widest"><TreePine size={14} /><span className="text-[10px] uppercase">Dream Forest</span></div>
+             <TreePine className={`text-emerald-600 transition-all duration-700 ${progress > 50 ? 'scale-[1.8]' : progress > 20 ? 'scale-125' : 'scale-100'} ${isGrowing ? 'animate-bounce' : ''}`} size={64} />
+             <div className="mt-12 px-6 py-2 bg-white/80 rounded-full border border-emerald-200 shadow-sm flex items-center gap-3 mx-auto text-center"><div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div><p className="text-xs font-black text-emerald-800 tracking-tight text-center">幸福能量：{progress}%</p></div>
+        </div>
+
+        {/* 紀錄儀 */}
+        <section>
+          <div className="flex justify-between items-center mb-5 px-1 text-left">
+            <div className="flex items-center gap-2 text-slate-400 text-left"><Calendar size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">歲月星光紀錄儀</h3></div>
+            <button onClick={() => setShowEvtForm(!showEvtForm)} className="text-xs font-black bg-white border border-slate-200 px-4 py-1.5 rounded-full text-slate-400 hover:text-emerald-500 tap-active shadow-sm transition-all">{showEvtForm ? '取消' : '+ 記下日子'}</button>
+          </div>
+          {showEvtForm && (
+            <form onSubmit={addEvent} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-5 animate-in slide-in-from-top-4 relative z-20 text-center">
+              <input placeholder="回憶標題..." className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center placeholder:text-slate-300" value={evtT} onChange={e=>setEvtT(e.target.value)} required />
+              <input 
+                type="date" 
+                className={`w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner text-center cursor-pointer transition-colors ${evtD ? 'has-value text-slate-600 font-bold' : 'text-slate-300'}`} 
+                value={evtD} 
+                onChange={e=>setEvtD(e.target.value)} 
+                required 
+              />
+              <div className="flex justify-center gap-4 py-2">
+                {MEMORY_COLORS.map(c => (
+                  <button key={c.id} type="button" onClick={() => setEvtC(c.id)} className={`w-8 h-8 rounded-full border-4 transition-all ${evtC === c.id ? 'scale-125 border-emerald-100 shadow-md' : 'border-transparent opacity-60'}`} style={{ backgroundColor: c.hex }} />
+                ))}
+              </div>
+              <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl tap-active active:scale-95 transition-all text-center">儲存時光</button>
+            </form>
+          )}
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+            {events.map(event => {
+              const status = getDateStatus(event.date);
+              const colorObj = MEMORY_COLORS.find(c => c.id === event.color) || MEMORY_COLORS[0];
+              const isSoon = status.type === 'future' && status.diff <= 7;
+              return (
+                <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${isSoon ? 'reminder-glow shadow-rose-100 border-rose-200' : ''}`}>
+                  <SafeDeleteBtn onDelete={() => deleteItem('events', event.id)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100" />
+                  {isSoon && <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1"><Stars size={10} fill="currentColor" /> 即將到來</div>}
+                  <div className={`w-12 h-12 mb-4 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${colorObj.bg} ${colorObj.text}`}><Heart size={24} fill="currentColor" /></div>
+                  <h4 className="text-[11px] font-black text-slate-500 truncate mb-1 text-center">{event.title}</h4>
+                  <p className="text-[9px] font-black text-slate-300 mb-2 text-center text-center">{event.date.replace(/-/g, " . ")}</p>
+                  <div className="flex flex-col text-center text-center"><p className={`text-2xl font-black tracking-tighter ${isSoon ? 'text-rose-400' : 'text-slate-800'}`}>{status.diff.toLocaleString()}</p><span className="text-[10px] font-black opacity-30 uppercase tracking-widest leading-none text-center">累計/倒數</span></div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 爆炸預警系統 */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-2 px-1 text-slate-400 justify-center font-black uppercase tracking-widest text-xs text-center text-center">森林絕密：爆炸預警系統</div>
+          <InlineLandmineSystem side="A" data={profiles.A} onSave={saveProfile} onDelete={clearMines} />
+          <InlineLandmineSystem side="B" data={profiles.B} onSave={saveProfile} onDelete={clearMines} />
+        </section>
+
+        {/* 許願瓶 */}
+        <section>
+          <div className="flex items-center gap-2 mb-4 px-1 text-slate-400 justify-center font-black uppercase tracking-widest text-xs text-center text-center"><Plus size={16} /> 投遞許願瓶</div>
+          <div className={`bg-white rounded-[3rem] p-8 shadow-2xl border-2 transition-all duration-700 ${PARTNERS[mySide].border}`}>
+            <form onSubmit={addWish} className="space-y-4 text-center">
+              <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder={`一起去做的夢？`} className="w-full p-4 bg-slate-50/50 rounded-2xl border-none outline-none h-24 text-lg font-medium resize-none placeholder:text-slate-300 text-center" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-center">
+                <div className="relative text-center"><input value={wishLoc} onChange={e=>setWishLoc(e.target.value)} placeholder="城市？ (選填)" className="w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm font-bold text-center placeholder:text-slate-300" /><MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" /></div>
+                <div className="relative text-center">
+                  <input type="date" value={wishDate} onChange={e=>setWishDate(e.target.value)} className={`w-full bg-slate-50/50 p-4 pl-10 rounded-2xl border-none outline-none text-sm text-center cursor-pointer transition-all ${wishDate ? 'has-value text-slate-600 font-bold' : 'text-slate-300'}`} />
+                  <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                </div>
+              </div>
+              <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active active:scale-95 transition-all text-center`}>擲向森林 🍾</button>
+            </form>
+          </div>
+        </section>
+
+        {/* 願望瓶展示 */}
+        <div className="space-y-8">
+          {wishes.map(item => {
+            const side = PARTNERS[item.creatorSide || 'A'];
+            const status = item.targetDate ? getDateStatus(item.targetDate) : null;
+            return (
+              <div key={item.id} className={`relative p-8 rounded-[3.5rem] border transition-all ${item.completed ? 'opacity-40 grayscale bg-slate-50 border-slate-100 shadow-none' : `bg-white ${side.border} shadow-lg shadow-emerald-50/20`}`}>
+                <div className="flex justify-between items-start mb-5 px-2">
+                  <span className={`px-4 py-1 rounded-full ${item.completed ? 'bg-slate-200 text-slate-400' : `${side.accent} text-white`} text-[10px] font-black uppercase tracking-widest`}>願願瓶</span>
+                  <SafeDeleteBtn onDelete={() => deleteItem('wishes', item.id)} />
+                </div>
+                <p className={`text-slate-700 font-black mb-6 text-xl text-left px-2 leading-relaxed text-left ${item.completed ? 'line-through text-slate-300' : ''}`}>{item.text}</p>
+                {(item.location || item.targetDate) && (
+                  <div className="flex flex-wrap gap-3 mb-8 px-2 text-left text-left">
+                    {item.location && <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-emerald-600 text-xs font-bold text-left"><MapPin size={12} fill="currentColor" /> {item.location}</div>}
+                    {item.targetDate && <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-slate-500 text-xs font-bold text-left"><Calendar size={12} className="text-rose-300 text-left" /> {item.targetDate.replace(/-/g, " . ")}</div>}
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2 text-left">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-md ${side.accent}`}>{side.displayName[0]}</div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{side.displayName}</span>
+                  </div>
+                  <button onClick={() => toggleDone(item)} className={`px-7 py-3 rounded-full text-[13px] font-black border transition-all tap-active ${item.completed ? 'bg-emerald-500 text-white border-transparent shadow-none text-center' : 'bg-white text-slate-300 border-slate-100 hover:border-emerald-200 hover:text-emerald-600 text-center'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 夢想足跡：台灣精密全境 + 國際板 */}
+        <section className="mb-24 px-1 text-center">
+          <div className="flex justify-between items-center mb-5 text-left px-2">
+            <div className="flex items-center gap-2 text-slate-400 font-black uppercase tracking-widest text-[10px]"><Globe size={16} /> 夢想足跡：{mapMode === 'taiwan' ? '台灣精密全境' : '東亞國際'}</div>
+            <div className="flex items-center gap-2 text-center text-center">
+              <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200 shadow-inner">
+                <button onClick={() => setMapMode('taiwan')} className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${mapMode === 'taiwan' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'}`}>台灣</button>
+                <button onClick={() => setMapMode('asia')} className={`px-3 py-1 rounded-full text-[9px] font-black transition-all ${mapMode === 'asia' ? 'bg-sky-500 text-white shadow-sm' : 'text-slate-400'}`}>國際</button>
+              </div>
+              <button onClick={() => setShowCityForm(!showCityForm)} className="text-xs font-black bg-white border border-slate-200 px-4 py-1.5 rounded-full text-slate-400 hover:text-emerald-500 tap-active shadow-sm transition-all">{showCityForm ? '取消' : '+ 新增'}</button>
+            </div>
+          </div>
+          
+          {showCityForm && (
+            <form onSubmit={addCity} className="bg-white p-7 rounded-[2.5rem] border border-emerald-50 shadow-2xl mb-8 space-y-4 animate-in slide-in-from-top-4 relative z-20 text-center">
+              <textarea placeholder="輸入城市或鄉鎮 (如：淡水、東京、曼谷)&#10;每行一個地點可批次新增" className="w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm font-bold shadow-inner text-center h-24 placeholder:text-slate-300" value={cityT} onChange={e=>setCityT(e.target.value)} required />
+              <input type="date" className={`w-full bg-slate-50 p-4 rounded-2xl border-none outline-none text-sm shadow-inner text-center cursor-pointer transition-colors ${cityD ? 'has-value text-slate-600 font-bold' : 'text-slate-300'}`} value={cityD} onChange={e=>setCityD(e.target.value)} />
+              <button type="submit" className="w-full py-4 bg-emerald-400 text-white rounded-2xl font-black text-sm shadow-xl tap-active active:scale-95 transition-all text-center">點亮回憶足跡</button>
+            </form>
+          )}
+
+          <div className="relative w-full h-[550px] bg-white rounded-[3.5rem] border-2 border-emerald-50 shadow-inner overflow-hidden mb-6 group mx-auto text-center text-center">
+            {mapMode === 'taiwan' ? <TaiwanMapSVG /> : <AsiaMapSVG />}
+            <div className="relative w-full h-full text-center text-center">
+              {currentMapFootprints.map((footprint, index) => {
+                const pos = getMapPos(footprint.name, mapMode);
+                const status = getDateStatus(footprint.date);
+                return (
+                  <div key={footprint.id} className="absolute group/dot text-center" style={{ left: pos.x, top: pos.y }}>
+                    <div className="relative flex flex-col items-center">
+                      <span className="city-name-fade absolute -top-8 whitespace-nowrap text-[10px] font-black text-emerald-600 bg-white/80 px-2 py-0.5 rounded-full shadow-sm z-10 pointer-events-none" style={{ animationDelay: `${index * 0.2}s` }}>{footprint.name}</span>
+                      <div className="city-dot-pop" style={{ animationDelay: `${index * 0.2 + 0.5}s` }}>
+                        <div className="ripple text-center"></div>
+                        <div className={`w-6 h-6 rounded-full shadow-lg ring-4 ring-white flex items-center justify-center hover:scale-150 transition-transform cursor-pointer overflow-visible z-20 ${footprint.type === 'wish' ? 'bg-rose-400' : 'bg-emerald-400'}`}>
+                          <Icon name={footprint.type === 'wish' ? 'Plane' : 'TreePine'} size={12} fill="white" className="text-white text-center" />
+                        </div>
+                        <div className="absolute top-9 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-xl border border-emerald-50 whitespace-nowrap opacity-0 group-hover/dot:opacity-100 transition-all scale-75 group-hover/dot:scale-100 z-30 pointer-events-none text-left">
+                          <p className="text-[11px] font-black text-emerald-800">{footprint.name}</p>
+                          <p className="text-[9px] font-bold text-slate-400 mt-0.5">{status.diff.toLocaleString()} Days Together</p>
+                          {footprint.type === 'wish' && <p className="text-[7px] text-rose-500 font-black uppercase mt-1">願望成真連動 ✨</p>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x text-center px-2">
+            {cities.filter(c => detectMapScope(c.name) === mapMode).map(city => (
+              <div key={city.id} className="min-w-[150px] bg-white p-5 rounded-[2.5rem] border border-emerald-50 shadow-sm group snap-start transition-all hover:shadow-md relative overflow-hidden text-center text-center">
+                <SafeDeleteBtn onDelete={() => deleteItem('cities', city.id)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100" />
+                <div className="w-10 h-10 mb-4 rounded-2xl mx-auto flex items-center justify-center bg-emerald-50 text-emerald-500 shadow-inner"><Navigation size={18} fill="currentColor" /></div>
+                <h4 className="text-[13px] font-black text-slate-700 truncate mb-1 px-1 text-center">{city.name}</h4>
+                <p className="text-xl font-black text-emerald-600 tracking-tighter leading-none text-center">{getDateStatus(city.date).diff.toLocaleString()}<span className="text-[9px] ml-1 uppercase opacity-40 font-black text-center">Days</span></p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-50 text-left text-center">
+        <div className="bg-white/90 backdrop-blur-2xl p-5 rounded-[2.5rem] shadow-2xl border border-emerald-100/50 flex items-center gap-6 ring-1 ring-emerald-50/50 transition-all text-center">
+          <div className="flex-1 text-center text-center">
+            <div className="flex justify-between items-center mb-2 px-1 text-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">森林總能量</span>
+              <span className="text-[10px] font-black text-emerald-500 text-center">{progress}%</span>
+            </div>
+            <div className="h-3 bg-emerald-50 rounded-full overflow-hidden p-0.5 border shadow-inner text-center"><div className="h-full bg-gradient-to-r from-emerald-300 to-green-500 rounded-full transition-all duration-1000 ease-out shadow-sm text-center" style={{ width: `${progress}%` }} /></div>
+          </div>
+          <div className={`p-3 rounded-2xl shadow-lg ring-4 ring-white transition-all duration-500 bg-emerald-500 text-white shadow-emerald-100 text-center text-center`}><Heart size={20} fill="currentColor" /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 
