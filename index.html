@@ -49,8 +49,8 @@
 
         .float-cloud { animation: float 6s ease-in-out infinite; }
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(1deg); }
         }
 
         .city-dot-pop { animation: dotPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; transform: scale(0); }
@@ -67,24 +67,38 @@
             background-size: 1em;
         }
 
-        /* 輸入框初始淡色狀態 */
         .input-pale {
-            background-color: rgba(248, 250, 252, 0.5); /* slate-50/50 */
-            color: #cbd5e1; /* slate-300 */
+            background-color: rgba(248, 250, 252, 0.5);
+            color: #cbd5e1;
             transition: all 0.3s ease;
         }
         .input-pale:focus, .input-pale.has-value {
             background-color: white;
-            color: #334155; /* slate-700 */
-            border-color: #10b981; /* emerald-500 */
+            color: #334155;
+            border-color: #10b981;
         }
 
         .county-path { transition: all 0.3s ease; cursor: pointer; }
         
-        /* 預告提醒的光暈 */
         .reminder-glow {
-            box-shadow: 0 0 15px rgba(251, 113, 133, 0.3);
-            border-color: rgba(251, 113, 133, 0.4) !important;
+            box-shadow: 0 0 15px rgba(251, 113, 133, 0.3) !important;
+            border-color: rgba(251, 113, 133, 0.5) !important;
+        }
+
+        .whisper-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .whisper-unread {
+            border-color: rgba(16, 185, 129, 0.3) !important;
+            animation: whisperGlow 3s infinite;
+        }
+        @keyframes whisperGlow {
+            0%, 100% { box-shadow: 0 10px 30px -5px rgba(16, 185, 129, 0.05); }
+            50% { box-shadow: 0 10px 40px 0px rgba(16, 185, 129, 0.2); }
         }
     </style>
 </head>
@@ -183,12 +197,27 @@
         };
 
         const getDateStatus = (dateStr) => {
-            if (!dateStr) return { diff: 0, type: 'past' };
+            if (!dateStr) return { diff: 0, type: 'past', isSoon: false };
             const target = new Date(dateStr); target.setHours(0,0,0,0);
             const now = new Date(); now.setHours(0,0,0,0);
+            
             const diffTime = target.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays > 0 ? { diff: diffDays, type: 'future' } : { diff: Math.abs(diffDays), type: 'past' };
+            
+            const currentYear = now.getFullYear();
+            let anniv = new Date(currentYear, target.getMonth(), target.getDate());
+            if (anniv < now) anniv.setFullYear(currentYear + 1);
+            
+            const timeToAnniv = anniv.getTime() - now.getTime();
+            const daysToAnniv = Math.ceil(timeToAnniv / (1000 * 60 * 60 * 24));
+            const isSoon = daysToAnniv >= 0 && daysToAnniv <= 7;
+            
+            return { 
+                diff: Math.abs(diffDays), 
+                type: diffDays > 0 ? 'future' : 'past', 
+                isSoon: isSoon,
+                daysToAnniv: daysToAnniv
+            };
         };
 
         // --- 3. 組件 ---
@@ -200,13 +229,17 @@
                 MapPin: <React.Fragment><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></React.Fragment>,
                 Calendar: <React.Fragment><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="3" y1="10" x2="21" y2="10" /></React.Fragment>,
                 TreePine: <React.Fragment><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-2l3.3-3.7a1 1 0 0 1 1.4 0L12 13l2.3-2.7a1 1 0 0 1 1.4 0L19 14h-2Z" /><path d="M12 22v-3" /></React.Fragment>,
+                Sprout: <path d="M7 20h10M12 20V8M12 8c2.5 0 5-2.5 5-5M12 8C9.5 8 7 5.5 7 3" />,
+                Flower: <React.Fragment><circle cx="12" cy="12" r="3" /><path d="M12 7V3M12 21v-4M7 12H3m18 0h-4m-2.5-4.5L18 4m-12 16 3.5-3.5M16.5 16.5 20 20M4 4l3.5 3.5" /></React.Fragment>,
                 X: <React.Fragment><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></React.Fragment>,
                 Plane: <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-1.2-.3-2.4.6-2.8 1.8-.4 1.2.3 2.4 1.5 2.8l7.5 3.5-3.5 3.5L5 21l1 .5 3.5-2.5 3.5-3.5 3.5 7.5c.4 1.2 1.6 1.9 2.8 1.5 1.2-.4 2.1-1.6 1.8-2.8z" />,
-                Landmine: <React.Fragment><circle cx="12" cy="12" r="8" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5l1.5 1.5M5 19l1.5-1.5M17.5 6.5l1.5-1.5" /><circle cx="12" cy="12" r="2.5" fill="currentColor" /></React.Fragment>,
+                Landmine: <React.Fragment><circle cx="12" cy="12" r="8" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2" /><circle cx="12" cy="12" r="2.5" fill="currentColor" /></React.Fragment>,
                 Wand2: <React.Fragment><path d="m15 2 6 6m-3-4 5 5l-11 11-4-1 1-4Z" /><circle cx="11" cy="7" r="1" /><circle cx="7" cy="11" r="1" /></React.Fragment>,
                 Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
                 Edit3: <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />,
-                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
+                Mail: <React.Fragment><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /><rect width="20" height="16" x="2" y="4" rx="2" /></React.Fragment>,
+                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -361,6 +394,7 @@
             const [historyCity, setHistoryCity] = useState(null);
             const [isGrowing, setIsGrowing] = useState(false);
             
+            // 表單 State
             const [newWish, setNewWish] = useState('');
             const [wishCounty, setWishCounty] = useState('');
             const [wishTown, setWishTown] = useState('');
@@ -372,6 +406,8 @@
             const [showCityForm, setShowCityForm] = useState(false);
             const [cityCounty, setCityCounty] = useState('');
             const [cityTown, setCityTown] = useState('');
+            const [cityDate, setCityDate] = useState('');
+
             const [newNote, setNewNote] = useState('');
 
             const progress = useMemo(() => wishes.length === 0 ? 0 : Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100), [wishes]);
@@ -391,7 +427,15 @@
                 onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); });
                 onSnapshot(path('cities'), snap => { setCities(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
                 onSnapshot(path('notes'), snap => { setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
-                onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => { const sA = getDateStatus(a.date); const sB = getDateStatus(b.date); if(sA.type !== sB.type) return sA.type === 'future' ? -1 : 1; return sA.diff - sB.diff; })); });
+                onSnapshot(path('events'), snap => { 
+                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setEvents(data.sort((a,b) => {
+                        const sA = getDateStatus(a.date);
+                        const sB = getDateStatus(b.date);
+                        if(sA.isSoon !== sB.isSoon) return sA.isSoon ? -1 : 1;
+                        return sA.daysToAnniv - sB.daysToAnniv;
+                    })); 
+                });
                 onSnapshot(path('profiles'), snap => { const d = { A: {}, B: {} }; snap.docs.forEach(doc => { d[doc.id] = doc.data(); }); setProfiles(d); });
             }, [user]);
 
@@ -431,9 +475,9 @@
                 const loc = cityCounty && cityTown ? `${cityCounty}${cityTown}` : (cityTown || "");
                 if (!loc) return;
                 await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'cities'), { 
-                    name: loc, creatorSide: mySide, createdAt: window.fb.serverTimestamp() 
+                    name: loc, date: cityDate, creatorSide: mySide, createdAt: window.fb.serverTimestamp() 
                 });
-                setCityCounty(''); setCityTown(''); setShowCityForm(false);
+                setCityCounty(''); setCityTown(''); setCityDate(''); setShowCityForm(false);
             };
 
             const addNote = async e => {
@@ -451,27 +495,43 @@
                     
                     {/* 彈窗：悄悄話 */}
                     {showGuardian && (
-                        <div className="fixed inset-0 z-[100] bg-emerald-900/10 backdrop-blur-2xl animate-in fade-in overflow-y-auto">
+                        <div className="fixed inset-0 z-[100] bg-emerald-950/40 backdrop-blur-xl animate-in fade-in overflow-y-auto">
                             <div className="max-w-xl mx-auto px-6 py-12 text-center">
                                 <div className="flex items-center justify-between mb-8 px-2">
-                                    <button onClick={() => setShowGuardian(false)} className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center text-emerald-500 shadow-sm"><Icon name="X" size={24} /></button>
-                                    <div className="text-center"><h2 className="font-black text-xl text-emerald-800">悄悄話面板</h2><p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Guardian Whispers</p></div>
+                                    <button onClick={() => setShowGuardian(false)} className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 tap-active"><Icon name="X" size={24} /></button>
+                                    <div className="text-center">
+                                        <h2 className="font-black text-2xl text-white drop-shadow-md tracking-widest">深夜信箋</h2>
+                                        <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-[0.3em] opacity-80">Guardian Whispers</p>
+                                    </div>
                                     <div className="w-12 h-12"></div>
                                 </div>
-                                <div className="bg-white rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100 mb-10 text-center">
+                                
+                                <div className="bg-white/90 backdrop-blur-2xl rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100/50 mb-10 text-center ring-8 ring-white/10">
                                     <form onSubmit={addNote} className="space-y-4">
-                                        <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="寫下不好意思開口的小願望..." className="w-full h-32 bg-slate-50 rounded-[2rem] p-5 text-sm font-bold border-none outline-none focus:bg-white text-center" />
-                                        <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-2xl font-black text-sm shadow-lg`}>傳遞悄悄話</button>
+                                        <textarea 
+                                            value={newNote} 
+                                            onChange={e=>setNewNote(e.target.value)} 
+                                            placeholder="寫下那些希望你聽見的悄悄話..." 
+                                            className="w-full h-36 bg-slate-50/50 rounded-[2rem] p-6 text-sm font-medium border-none outline-none focus:bg-white text-center italic placeholder:text-slate-300 transition-all shadow-inner" 
+                                        />
+                                        <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-sm shadow-xl active:scale-95 flex items-center justify-center gap-2`}>
+                                            <Icon name="Mail" size={18} fill="currentColor" /> 封存並傳遞
+                                        </button>
                                     </form>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {notes.map((note, idx) => {
                                         const side = PARTNERS[note.creatorSide || 'A'];
                                         return (
-                                            <div key={note.id} className={`p-6 rounded-[2.5rem] border-2 float-cloud bg-white ${note.seen ? 'opacity-40 grayscale' : `${side.border} shadow-lg shadow-emerald-50/20`} text-center`} style={{ animationDelay: `${idx * 0.5}s` }}>
-                                                <div className="flex justify-between mb-4"><span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white ${side.accent}`}>{side.displayName[0]}</span><SafeDeleteBtn onDelete={() => deleteItem('notes', note.id)} /></div>
-                                                <p className={`text-slate-700 font-bold mb-6 text-sm leading-relaxed text-left ${note.seen ? 'line-through' : ''}`}>{note.text}</p>
-                                                <button onClick={() => window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes', note.id), { seen: !note.seen })} className={`w-full py-2.5 rounded-xl text-[10px] font-black transition-all ${note.seen ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600'}`}>{note.seen ? '對方已看見' : '我收到了！'}</button>
+                                            <div key={note.id} className={`p-7 rounded-[2.8rem] float-cloud whisper-card ${note.seen ? 'opacity-50 grayscale scale-95' : 'whisper-unread'} relative overflow-hidden`} style={{ animationDelay: `${idx * 0.7}s` }}>
+                                                {!note.seen && <div className="absolute -top-1 -right-1 text-yellow-400 animate-pulse"><Icon name="Sparkles" size={24} fill="currentColor" /></div>}
+                                                <div className="flex justify-between mb-5 items-center">
+                                                    <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black text-white ${side.accent} ring-4 ring-white shadow-lg`}>{side.displayName[0]}</span>
+                                                    <SafeDeleteBtn onDelete={() => deleteItem('notes', note.id)} />
+                                                </div>
+                                                <p className={`text-slate-700 font-bold mb-8 text-base leading-relaxed text-left italic ${note.seen ? 'line-through' : ''}`}>「{note.text}」</p>
+                                                <button onClick={() => window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes', note.id), { seen: !note.seen })} className={`w-full py-3 rounded-2xl text-[11px] font-black transition-all border flex items-center justify-center gap-2 ${note.seen ? 'bg-slate-100 text-slate-400 border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>{note.seen ? '對方已領會' : '我收到了這份心意'}</button>
                                             </div>
                                         );
                                     })}
@@ -519,9 +579,9 @@
                     <header className="bg-white/80 backdrop-blur-xl sticky top-0 z-50 px-6 py-4 flex justify-between items-center border-b border-emerald-50 shadow-sm text-center">
                         <div className="flex items-center gap-3"><Icon name="Heart" className="text-emerald-500 animate-pulse" /><h1 className="font-black text-lg text-emerald-800">夢想森林</h1></div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setShowGuardian(true)} className="p-2.5 bg-yellow-50 rounded-2xl text-yellow-600 border border-yellow-100"><Icon name="Wand2" size={20} /></button>
-                            <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100"><Icon name="Shield" size={20} /></button>
-                            <div className="flex bg-slate-100/50 p-1 rounded-2xl">
+                            <button onClick={() => setShowGuardian(true)} className="p-2.5 bg-yellow-50 rounded-2xl text-yellow-600 border border-yellow-100 shadow-sm tap-active"><Icon name="Wand2" size={20} /></button>
+                            <button onClick={() => setShowProfiles(true)} className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-100 shadow-sm tap-active"><Icon name="Shield" size={20} /></button>
+                            <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-100">
                                 {['A', 'B'].map(p => (
                                     <button key={p} onClick={() => setMySide(p)} className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${mySide === p ? `${PARTNERS[p].accent} text-white shadow-md` : 'text-slate-300'}`}>{PARTNERS[p].displayName}</button>
                                 ))}
@@ -539,7 +599,7 @@
                             <InlineLandmineSystem side="B" data={profiles.B} onSave={saveProfile} onDelete={clearMines} />
                         </section>
 
-                        {/* 歲月星光紀錄儀 (時光軸) */}
+                        {/* 歲月星光紀錄儀 */}
                         <section>
                             <div className="flex justify-between items-center mb-5 px-1 text-left">
                                 <div className="flex items-center gap-2 text-slate-400"><Icon name="Calendar" size={16} /><h3 className="text-xs font-black uppercase tracking-[0.2em]">歲月星光紀錄儀</h3></div>
@@ -559,74 +619,57 @@
                                 {events.map(event => {
                                     const status = getDateStatus(event.date);
                                     const colorObj = MEMORY_COLORS.find(c => c.id === event.color) || MEMORY_COLORS[0];
-                                    // 判斷是否為即將到來的日子 (未來 7 天內)
-                                    const isSoon = status.type === 'future' && status.diff <= 7;
                                     return (
-                                        <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${isSoon ? 'reminder-glow ring-2 ring-rose-200' : ''}`}>
+                                        <div key={event.id} className={`min-w-[170px] bg-white p-6 rounded-[2.5rem] border border-emerald-50 shadow-sm text-center group snap-start transition-all hover:shadow-md relative ${status.isSoon ? 'reminder-glow ring-2 ring-rose-300' : ''}`}>
                                             <SafeDeleteBtn onDelete={() => deleteItem('events', event.id)} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100" />
-                                            {/* 即將到來預告標籤 */}
-                                            {isSoon && (
-                                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1">
-                                                    <Icon name="Sparkles" size={10} fill="currentColor" /> 即將到來
-                                                </div>
-                                            )}
+                                            {status.isSoon && <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-rose-400 text-white text-[9px] font-black rounded-full shadow-lg animate-bounce flex items-center gap-1"><Icon name="Sparkles" size={10} fill="currentColor" /> 即將到來</div>}
                                             <div className={`w-12 h-12 mb-4 rounded-2xl mx-auto flex items-center justify-center shadow-inner ${colorObj.bg} ${colorObj.text}`}><Icon name="Heart" size={24} fill="currentColor" /></div>
                                             <h4 className="text-[11px] font-black text-slate-500 truncate mb-1">{event.title}</h4>
                                             <p className="text-[9px] font-black text-slate-300 mb-2">{event.date.replace(/-/g, " . ")}</p>
-                                            <div className="flex flex-col"><p className={`text-2xl font-black tracking-tighter ${isSoon ? 'text-rose-400' : 'text-slate-800'}`}>{status.diff.toLocaleString()}</p><span className="text-[10px] font-black opacity-30 uppercase tracking-widest leading-none">累計/倒數</span></div>
+                                            <div className="flex flex-col"><p className={`text-2xl font-black tracking-tighter ${status.isSoon ? 'text-rose-400' : 'text-slate-800'}`}>{status.diff.toLocaleString()}</p><span className="text-[10px] font-black opacity-30 uppercase tracking-widest leading-none">累計/倒數</span></div>
                                         </div>
                                     );
                                 })}
                             </div>
                         </section>
 
-                        {/* 投遞願望瓶 - 優化日期與選填地點功能 */}
+                        {/* 投遞願望瓶 */}
                         <section className="bg-white rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-50 text-center">
                             <h3 className="text-sm font-black text-emerald-800 mb-6 flex items-center gap-2 justify-center"><Icon name="Plus" size={16} /> 投遞新願望瓶</h3>
                             <form onSubmit={addWish} className="space-y-4">
-                                <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder="想一起做什麼夢？" className="w-full p-4 rounded-2xl border-none outline-none h-24 text-center text-lg resize-none input-pale has-value" />
-                                
-                                <LocationPicker 
-                                    county={wishCounty} 
-                                    town={wishTown} 
-                                    onCountyChange={setWishCounty} 
-                                    onTownChange={setWishTown} 
-                                    isOptional={true}
-                                />
-                                
+                                <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder="想一起做什麼夢？" className="w-full p-4 rounded-2xl border-none outline-none h-24 text-center text-lg resize-none input-pale has-value shadow-inner" />
+                                <LocationPicker county={wishCounty} town={wishTown} onCountyChange={setWishCounty} onTownChange={setWishTown} isOptional={true} />
                                 <div className="relative">
-                                    <input 
-                                        type="date" 
-                                        value={wishDate} 
-                                        onChange={e=>setWishDate(e.target.value)} 
-                                        className={`w-full p-4 pl-12 rounded-2xl border-none outline-none text-sm font-bold text-center cursor-pointer shadow-inner input-pale ${wishDate ? 'has-value' : ''}`} 
-                                    />
+                                    <input type="date" value={wishDate} onChange={e=>setWishDate(e.target.value)} className={`w-full p-4 pl-12 rounded-2xl border-none outline-none text-sm font-bold text-center cursor-pointer shadow-inner input-pale ${wishDate ? 'has-value' : ''}`} />
                                     <Icon name="Calendar" size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" />
                                     {!wishDate && <span className="absolute left-12 top-1/2 -translate-y-1/2 text-sm text-slate-300 pointer-events-none">預計日期 (選填)</span>}
                                 </div>
-
                                 <button type="submit" disabled={!newWish.trim()} className={`w-full py-5 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-md shadow-xl tap-active active:scale-95 transition-all`}>擲向森林 🍾</button>
                             </form>
                         </section>
 
-                        {/* 精確地圖 */}
+                        {/* 精確地圖 & 足跡成長系統 */}
                         <section className="space-y-6 text-center">
-                            <div className="flex justify-between items-center px-2">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">精確夢想足跡地圖</h3>
+                            <div className="flex justify-between items-center px-2 text-left">
+                                <div>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                        <Icon name="Sprout" size={14} className="text-emerald-500" /> 森林足跡進化地圖
+                                    </h3>
+                                    <p className="text-[9px] text-slate-300 font-bold mt-1">造訪多次的地方會長成大樹喔！</p>
+                                </div>
                                 <button onClick={() => setShowCityForm(!showCityForm)} className="text-xs font-bold text-emerald-500 hover:underline">{showCityForm ? '取消' : '+ 新增足跡'}</button>
                             </div>
-                            
+
                             {showCityForm && (
-                                <div className="bg-emerald-50 p-6 rounded-[2rem] border-2 border-emerald-100 animate-in slide-in-from-top-4 text-center">
+                                <div className="bg-emerald-50 p-6 rounded-[2.5rem] border-2 border-emerald-100 animate-in slide-in-from-top-4 text-center">
                                     <form onSubmit={addCity} className="space-y-4">
-                                        <LocationPicker 
-                                            county={cityCounty} 
-                                            town={cityTown} 
-                                            onCountyChange={setCityCounty} 
-                                            onTownChange={setCityTown} 
-                                            isOptional={false}
-                                        />
-                                        <button type="submit" className="w-full py-3 bg-emerald-500 text-white rounded-xl font-black text-xs">點亮此座標</button>
+                                        <LocationPicker county={cityCounty} town={cityTown} onCountyChange={setCityCounty} onTownChange={setCityTown} isOptional={false} />
+                                        <div className="relative">
+                                            <input type="date" value={cityDate} onChange={e=>setCityDate(e.target.value)} className={`w-full p-4 pl-12 rounded-2xl border-none outline-none text-sm font-bold text-center cursor-pointer shadow-inner input-pale ${cityDate ? 'has-value' : ''}`} />
+                                            <Icon name="Calendar" size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" />
+                                            {!cityDate && <span className="absolute left-12 top-1/2 -translate-y-1/2 text-sm text-slate-300 pointer-events-none">抵達日期 (必填)</span>}
+                                        </div>
+                                        <button type="submit" disabled={!cityCounty || !cityTown || !cityDate} className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-200/50">點亮這份回憶 🌱</button>
                                     </form>
                                 </div>
                             )}
@@ -636,10 +679,22 @@
                                 <div className="absolute inset-0 pointer-events-none">
                                     {Object.entries(groupedFootprints).map(([cityName, records]) => {
                                         const pos = getMapPos(cityName);
+                                        const count = records.length;
                                         const isWish = records.some(r => r.type === 'wish');
+                                        
+                                        // 根據次數決定圖示與樣式
+                                        const getGrowthStyle = () => {
+                                            if (count === 1) return { icon: 'Flower', color: 'text-rose-400', size: 16 };
+                                            if (count === 2) return { icon: 'Sprout', color: 'text-emerald-400', size: 20 };
+                                            return { icon: 'TreePine', color: 'text-emerald-600', size: 24 };
+                                        };
+                                        const style = getGrowthStyle();
+
                                         return (
                                             <div key={cityName} className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" style={{ left: pos.x, top: pos.y }} onClick={() => setHistoryCity(cityName)}>
-                                                <div className={`w-4 h-4 rounded-full border-2 border-white shadow-lg ${isWish ? 'bg-rose-400' : 'bg-emerald-500'} city-dot-pop ring-4 ring-emerald-500/10`} />
+                                                <div className={`city-dot-pop flex items-center justify-center ${style.color} bg-white rounded-full p-1 shadow-md ring-2 ring-emerald-50 hover:scale-150 transition-all`}>
+                                                    <Icon name={style.icon} size={style.size} fill="currentColor" className={count >= 3 ? "animate-pulse" : ""} />
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -675,14 +730,22 @@
                         <div className="fixed inset-0 z-[110] bg-emerald-900/10 backdrop-blur-xl flex items-center justify-center p-6 text-center" onClick={() => setHistoryCity(null)}>
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100" onClick={e=>e.stopPropagation()}>
                                 <div className="flex justify-between items-center mb-6">
-                                    <h2 className="font-black text-xl text-emerald-800">{historyCity}</h2>
+                                    <div>
+                                        <h2 className="font-black text-xl text-emerald-800">{historyCity}</h2>
+                                        <p className="text-[9px] font-bold text-emerald-400 text-left">共累積 {groupedFootprints[historyCity]?.length || 0} 個回憶</p>
+                                    </div>
                                     <button onClick={() => setHistoryCity(null)} className="p-2 text-slate-300 hover:text-emerald-500"><Icon name="X" /></button>
                                 </div>
                                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
-                                    {groupedFootprints[historyCity]?.map((rec, i) => (
+                                    {groupedFootprints[historyCity]?.sort((a,b) => new Date(b.date) - new Date(a.date)).map((rec, i) => (
                                         <div key={i} className="flex items-start gap-3 border-b border-emerald-50 pb-3 last:border-none text-left">
-                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0"><Icon name={rec.type === 'wish' ? 'Plane' : 'TreePine'} size={16} /></div>
-                                            <p className="text-sm font-bold text-slate-700 leading-relaxed">{rec.type === 'wish' ? `願望：${rec.text}` : '在此留下足跡'}</p>
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+                                                <Icon name={rec.type === 'wish' ? 'Plane' : 'TreePine'} size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-300">{rec.date ? rec.date.replace(/-/g, ".") : '神祕某日'}</p>
+                                                <p className="text-sm font-bold text-slate-700 leading-relaxed">{rec.type === 'wish' ? `願望：${rec.text}` : '抵達森林足跡'}</p>
+                                            </div>
                                         </div>
                                     ))}
                                     {(!groupedFootprints[historyCity] || groupedFootprints[historyCity].length === 0) && <p className="text-slate-300 text-xs italic text-center">這裡是尚未探索的森林邊緣...</p>}
