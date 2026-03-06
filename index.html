@@ -645,7 +645,7 @@
 
                         {/* 投遞願望瓶 */}
                         <section className="bg-white rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-50 text-center">
-                            <h3 className="text-sm font-black text-emerald-800 mb-6 flex items-center gap-2 justify-center"><Icon name="Plus" size={16} /> 投遞心願望</h3>
+                            <h3 className="text-sm font-black text-emerald-800 mb-6 flex items-center gap-2 justify-center"><Icon name="Plus" size={16} /> 投遞心願瓶</h3>
                             <form onSubmit={addWish} className="space-y-4">
                                 <textarea value={newWish} onChange={e=>setNewWish(e.target.value)} placeholder="想一起做什麼夢？" className="w-full p-4 rounded-2xl border-none outline-none h-24 text-center text-lg resize-none input-pale has-value shadow-inner" />
                                 <LocationPicker county={wishCounty} town={wishTown} onCountyChange={setWishCounty} onTownChange={setWishTown} isOptional={true} />
@@ -796,6 +796,7 @@
     </script>
 </body>
 </html>
+
 
 
 
