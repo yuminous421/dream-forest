@@ -50,7 +50,7 @@
         .float-cloud { animation: float 6s ease-in-out infinite; }
         @keyframes float {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(1deg); }
+            50% { transform: translateY(-15px) rotate(-1deg); }
         }
 
         .city-dot-pop { animation: dotPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; transform: scale(0); }
@@ -78,7 +78,7 @@
             border-color: #10b981;
         }
 
-        .county-path { transition: all 0.3s ease; cursor: pointer; }
+        .county-path { transition: all 0.5s ease; cursor: pointer; }
         
         .reminder-glow {
             box-shadow: 0 0 15px rgba(251, 113, 133, 0.3) !important;
@@ -200,24 +200,14 @@
             if (!dateStr) return { diff: 0, type: 'past', isSoon: false };
             const target = new Date(dateStr); target.setHours(0,0,0,0);
             const now = new Date(); now.setHours(0,0,0,0);
-            
             const diffTime = target.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
             const currentYear = now.getFullYear();
             let anniv = new Date(currentYear, target.getMonth(), target.getDate());
             if (anniv < now) anniv.setFullYear(currentYear + 1);
-            
             const timeToAnniv = anniv.getTime() - now.getTime();
             const daysToAnniv = Math.ceil(timeToAnniv / (1000 * 60 * 60 * 24));
-            const isSoon = daysToAnniv >= 0 && daysToAnniv <= 7;
-            
-            return { 
-                diff: Math.abs(diffDays), 
-                type: diffDays > 0 ? 'future' : 'past', 
-                isSoon: isSoon,
-                daysToAnniv: daysToAnniv
-            };
+            return { diff: Math.abs(diffDays), type: diffDays > 0 ? 'future' : 'past', isSoon: daysToAnniv >= 0 && daysToAnniv <= 7, daysToAnniv };
         };
 
         // --- 3. 組件 ---
@@ -239,7 +229,8 @@
                 Edit3: <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />,
                 Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />,
                 Mail: <React.Fragment><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /><rect width="20" height="16" x="2" y="4" rx="2" /></React.Fragment>,
-                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+                Save: <React.Fragment><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></React.Fragment>
             };
             return (
                 <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -255,6 +246,29 @@
                 <button onClick={(e) => { e.stopPropagation(); confirming ? onDelete() : setConfirming(true); }} className={`${className} transition-all flex items-center gap-1 ${confirming ? 'bg-rose-500 text-white px-2 rounded-lg py-1 scale-105 shadow-md' : 'text-slate-200 hover:text-rose-400'}`}>
                     <Icon name="Trash2" size={14} /> {confirming && <span className="text-[10px] font-black tracking-tighter">確認？</span>}
                 </button>
+            );
+        };
+
+        const LoveTree = ({ progress, isGrowing }) => {
+            const renderTree = () => {
+                const animationClass = isGrowing ? "animate-bounce" : "";
+                if (progress === 0) return <div className="text-amber-700 mt-10 flex flex-col items-center text-center"><div className="w-5 h-5 bg-amber-800 rounded-full"></div><span className="text-[10px] mt-2 font-black opacity-40 uppercase">Seeds</span></div>;
+                if (progress < 30) return <div className={`text-emerald-500 mt-6 ${animationClass}`}><Icon name="TreePine" size={52} /></div>;
+                if (progress < 60) return <div className={`text-emerald-600 scale-125 mt-4 ${animationClass}`}><Icon name="TreePine" size={60} /></div>;
+                if (progress < 90) return <div className={`relative text-green-700 scale-150 mt-2 ${animationClass}`}><Icon name="TreePine" size={68} /></div>;
+                return <div className={`relative text-green-800 scale-[1.8] mt-2 ${animationClass}`}><Icon name="TreePine" size={72} /><div className="absolute inset-0 flex items-center justify-center"><Icon name="Heart" className="text-rose-400/60 fill-current animate-ping" size={24} /></div></div>;
+            };
+            return (
+                <div className="flex flex-col items-center justify-center py-14 bg-gradient-to-b from-emerald-50/20 to-emerald-100/30 rounded-[3.5rem] border border-emerald-100/50 mb-10 overflow-hidden relative shadow-inner">
+                    <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-500/50 font-black tracking-widest text-[10px] uppercase">Dream Forest</div>
+                    {renderTree()}
+                    <div className="mt-12 flex flex-col items-center gap-2">
+                        <div className="px-6 py-2 bg-white/80 rounded-full border border-emerald-200 shadow-sm flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
+                            <p className="text-xs font-black text-emerald-800 tracking-tight">幸福能量：{progress}%</p>
+                        </div>
+                    </div>
+                </div>
             );
         };
 
@@ -309,29 +323,6 @@
             );
         };
 
-        const LoveTree = ({ progress, isGrowing }) => {
-            const renderTree = () => {
-                const animationClass = isGrowing ? "animate-bounce" : "";
-                if (progress === 0) return <div className="text-amber-700 mt-10 flex flex-col items-center text-center"><div className="w-5 h-5 bg-amber-800 rounded-full"></div><span className="text-[10px] mt-2 font-black opacity-40 uppercase">Seeds</span></div>;
-                if (progress < 30) return <div className={`text-emerald-500 mt-6 ${animationClass}`}><Icon name="TreePine" size={52} /></div>;
-                if (progress < 60) return <div className={`text-emerald-600 scale-125 mt-4 ${animationClass}`}><Icon name="TreePine" size={60} /></div>;
-                if (progress < 90) return <div className={`relative text-green-700 scale-150 mt-2 ${animationClass}`}><Icon name="TreePine" size={68} /></div>;
-                return <div className={`relative text-green-800 scale-[1.8] mt-2 ${animationClass}`}><Icon name="TreePine" size={72} /><div className="absolute inset-0 flex items-center justify-center"><Icon name="Heart" className="text-rose-400/60 fill-current animate-ping" size={24} /></div></div>;
-            };
-            return (
-                <div className="flex flex-col items-center justify-center py-14 bg-gradient-to-b from-emerald-50/20 to-emerald-100/30 rounded-[3.5rem] border border-emerald-100/50 mb-10 overflow-hidden relative shadow-inner">
-                    <div className="absolute top-5 left-8 flex items-center gap-2 text-emerald-500/50 font-black tracking-widest text-[10px] uppercase">Dream Forest</div>
-                    {renderTree()}
-                    <div className="mt-12 flex flex-col items-center gap-2">
-                        <div className="px-6 py-2 bg-white/80 rounded-full border border-emerald-200 shadow-sm flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-                            <p className="text-xs font-black text-emerald-800 tracking-tight">幸福能量：{progress}%</p>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const LocationPicker = ({ county, town, onCountyChange, onTownChange, isOptional = true }) => {
             return (
                 <div className="grid grid-cols-2 gap-2">
@@ -347,8 +338,17 @@
             );
         };
 
-        const TaiwanProfessionalMap = ({ groupedFootprints, onCountyClick }) => {
+        const TaiwanProfessionalMap = ({ countyActivityCount, onCountyClick }) => {
             const counties = Object.keys(COUNTY_COORDS);
+            
+            // 決定縣市熱力顏色
+            const getCountyFill = (count) => {
+                if (!count || count === 0) return 'fill-slate-50 stroke-slate-100';
+                if (count <= 2) return 'fill-emerald-50 stroke-emerald-100';
+                if (count <= 5) return 'fill-emerald-200 stroke-emerald-300';
+                return 'fill-emerald-400 stroke-emerald-600';
+            };
+
             return (
                 <svg viewBox="0 0 100 120" className="w-full h-full">
                     <defs>
@@ -362,14 +362,17 @@
                     <g filter="url(#shadowMap)">
                         {counties.map(name => {
                             const pos = COUNTY_COORDS[name];
-                            const hasActivity = Object.keys(groupedFootprints).some(loc => loc.includes(name));
+                            const count = countyActivityCount[name] || 0;
                             return (
                                 <g key={name} className="group" onClick={() => onCountyClick(name)}>
                                     <circle 
-                                        cx={pos.x} cy={pos.y} r={hasActivity ? 4 : 3} 
-                                        className={`county-path transition-all duration-500 cursor-pointer ${hasActivity ? 'fill-emerald-500 stroke-emerald-600' : 'fill-slate-100 stroke-slate-200'} hover:fill-emerald-400`}
+                                        cx={pos.x} cy={pos.y} r={6} 
+                                        className={`county-path ${getCountyFill(count)} hover:brightness-95`}
                                         strokeWidth="0.5"
                                     />
+                                    {count > 0 && (
+                                        <text x={pos.x} y={pos.y + 1} textAnchor="middle" className="fill-emerald-800 text-[3px] font-black pointer-events-none">{count}</text>
+                                    )}
                                 </g>
                             );
                         })}
@@ -394,7 +397,11 @@
             const [historyCity, setHistoryCity] = useState(null);
             const [isGrowing, setIsGrowing] = useState(false);
             
-            // 表單 State
+            const [editingId, setEditingId] = useState(null);
+            const [editCounty, setEditCounty] = useState('');
+            const [editTown, setEditTown] = useState('');
+            const [editDate, setEditDate] = useState('');
+
             const [newWish, setNewWish] = useState('');
             const [wishCounty, setWishCounty] = useState('');
             const [wishTown, setWishTown] = useState('');
@@ -407,7 +414,6 @@
             const [cityCounty, setCityCounty] = useState('');
             const [cityTown, setCityTown] = useState('');
             const [cityDate, setCityDate] = useState('');
-
             const [newNote, setNewNote] = useState('');
 
             const progress = useMemo(() => wishes.length === 0 ? 0 : Math.round((wishes.filter(w => w.completed).length / wishes.length) * 100), [wishes]);
@@ -423,26 +429,36 @@
                 if (!user || !window.fb) return;
                 const { db, collection, onSnapshot } = window.fb;
                 const path = c => collection(db, 'artifacts', appId, 'public', 'data', c);
-                
                 onSnapshot(path('wishes'), snap => { setWishes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); });
                 onSnapshot(path('cities'), snap => { setCities(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
                 onSnapshot(path('notes'), snap => { setNotes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
-                onSnapshot(path('events'), snap => { 
-                    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setEvents(data.sort((a,b) => {
-                        const sA = getDateStatus(a.date);
-                        const sB = getDateStatus(b.date);
-                        if(sA.isSoon !== sB.isSoon) return sA.isSoon ? -1 : 1;
-                        return sA.daysToAnniv - sB.daysToAnniv;
-                    })); 
-                });
+                onSnapshot(path('events'), snap => { setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
                 onSnapshot(path('profiles'), snap => { const d = { A: {}, B: {} }; snap.docs.forEach(doc => { d[doc.id] = doc.data(); }); setProfiles(d); });
             }, [user]);
 
+            // 計算縣市整體的活動總數 (用於熱力圖)
+            const countyActivityCount = useMemo(() => {
+                const counts = {};
+                const allLocs = [
+                    ...cities.map(c => normalName(c.name)),
+                    ...wishes.filter(w => w.completed && w.location).map(w => normalName(w.location))
+                ];
+                allLocs.forEach(loc => {
+                    for (let county in COUNTY_COORDS) {
+                        if (loc.includes(county)) {
+                            counts[county] = (counts[county] || 0) + 1;
+                            break;
+                        }
+                    }
+                });
+                return counts;
+            }, [cities, wishes]);
+
+            // 地圖足跡彙整：以「鄉鎮(完整地名)」為單位進行生命成長
             const groupedFootprints = useMemo(() => {
                 const all = [
                     ...cities.map(c => ({ ...c, type: 'manual' })),
-                    ...wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, text: w.text, name: w.location, type: 'wish' }))
+                    ...wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, text: w.text, name: w.location, type: 'wish', date: w.targetDate }))
                 ];
                 return all.reduce((acc, f) => {
                     const name = normalName(f.name);
@@ -452,38 +468,39 @@
                 }, {});
             }, [cities, wishes]);
 
+            const countyDetails = useMemo(() => {
+                if (!historyCity) return [];
+                const searchKey = normalName(historyCity);
+                const all = [
+                    ...cities.map(c => ({ ...c, type: 'manual' })),
+                    ...wishes.filter(w => w.completed && w.location).map(w => ({ id: `wish-${w.id}`, text: w.text, name: w.location, type: 'wish', date: w.targetDate }))
+                ];
+                return all.filter(f => normalName(f.name).includes(searchKey));
+            }, [cities, wishes, historyCity]);
+
             const saveProfile = (s, d) => window.fb.setDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'profiles', s), d);
             const clearMines = s => saveProfile(s, { ...profiles[s], innerWorld: "" });
 
             const addWish = async e => {
                 e.preventDefault(); if (!newWish.trim()) return;
                 const loc = wishCounty && wishTown ? `${wishCounty}${wishTown}` : (wishTown || "");
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes'), { 
-                    text: newWish, location: loc, targetDate: wishDate, creatorSide: mySide, completed: false, createdAt: window.fb.serverTimestamp() 
-                });
+                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes'), { text: newWish, location: loc, targetDate: wishDate, creatorSide: mySide, completed: false, createdAt: window.fb.serverTimestamp() });
                 setNewWish(''); setWishCounty(''); setWishTown(''); setWishDate('');
-            };
-
-            const addEvent = async e => {
-                e.preventDefault(); if (!evtT.trim() || !evtD) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'events'), { title: evtT, date: evtD, color: evtC, createdAt: window.fb.serverTimestamp() });
-                setEvtT(''); setEvtD(''); setShowEvtForm(false);
             };
 
             const addCity = async e => {
                 e.preventDefault();
                 const loc = cityCounty && cityTown ? `${cityCounty}${cityTown}` : (cityTown || "");
                 if (!loc) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'cities'), { 
-                    name: loc, date: cityDate, creatorSide: mySide, createdAt: window.fb.serverTimestamp() 
-                });
+                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'cities'), { name: loc, date: cityDate, creatorSide: mySide, createdAt: window.fb.serverTimestamp() });
                 setCityCounty(''); setCityTown(''); setCityDate(''); setShowCityForm(false);
             };
 
-            const addNote = async e => {
-                e.preventDefault(); if (!newNote.trim()) return;
-                await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes'), { text: newNote, creatorSide: mySide, seen: false, createdAt: window.fb.serverTimestamp() });
-                setNewNote('');
+            const updateFootprint = async (id) => {
+                const loc = editCounty && editTown ? `${editCounty}${editTown}` : (editTown || "");
+                if (!loc) return;
+                await window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'cities', id), { name: loc, date: editDate });
+                setEditingId(null);
             };
 
             const deleteItem = async (col, id) => { await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', col, id)); };
@@ -505,21 +522,12 @@
                                     </div>
                                     <div className="w-12 h-12"></div>
                                 </div>
-                                
                                 <div className="bg-white/90 backdrop-blur-2xl rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100/50 mb-10 text-center ring-8 ring-white/10">
-                                    <form onSubmit={addNote} className="space-y-4">
-                                        <textarea 
-                                            value={newNote} 
-                                            onChange={e=>setNewNote(e.target.value)} 
-                                            placeholder="寫下那些希望你聽見的悄悄話..." 
-                                            className="w-full h-36 bg-slate-50/50 rounded-[2rem] p-6 text-sm font-medium border-none outline-none focus:bg-white text-center italic placeholder:text-slate-300 transition-all shadow-inner" 
-                                        />
-                                        <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-sm shadow-xl active:scale-95 flex items-center justify-center gap-2`}>
-                                            <Icon name="Mail" size={18} fill="currentColor" /> 封存並傳遞
-                                        </button>
+                                    <form onSubmit={async e => { e.preventDefault(); if (!newNote.trim()) return; await window.fb.addDoc(window.fb.collection(window.fb.db, 'artifacts', appId, 'public', 'data', 'notes'), { text: newNote, creatorSide: mySide, seen: false, createdAt: window.fb.serverTimestamp() }); setNewNote(''); }} className="space-y-4">
+                                        <textarea value={newNote} onChange={e=>setNewNote(e.target.value)} placeholder="寫下想讓你聽見的心音..." className="w-full h-36 bg-slate-50/50 rounded-[2rem] p-6 text-sm font-medium border-none outline-none focus:bg-white text-center italic placeholder:text-slate-300 transition-all shadow-inner" />
+                                        <button type="submit" disabled={!newNote.trim()} className={`w-full py-4 ${PARTNERS[mySide].accent} text-white rounded-[2rem] font-black text-sm shadow-xl active:scale-95 flex items-center justify-center gap-2`}><Icon name="Mail" size={18} fill="currentColor" /> 封存並傳遞</button>
                                     </form>
                                 </div>
-
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {notes.map((note, idx) => {
                                         const side = PARTNERS[note.creatorSide || 'A'];
@@ -551,7 +559,6 @@
                                 </div>
                                 {Object.values(PARTNERS).map(config => {
                                     const data = profiles[config.id] || {};
-                                    const fields = [{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}];
                                     return (
                                         <div key={config.id} className={`w-full bg-white rounded-[2.5rem] p-8 border-2 ${config.border} shadow-xl mb-6 relative overflow-hidden text-center`}>
                                             <div className="flex justify-between items-center mb-6 px-2">
@@ -562,7 +569,7 @@
                                                 <SafeDeleteBtn onDelete={() => saveProfile(config.id, {})} />
                                             </div>
                                             <div className="grid grid-cols-1 gap-4">
-                                                {fields.map(f => (
+                                                {[{l:'海拔高度', k:'height'}, {l:'佔地總重', k:'weight'}, {l:'足跡印記', k:'shoeSize'}, {l:'林木色調', k:'favColor'}].map(f => (
                                                     <div key={f.k} className="flex flex-col border-b border-slate-50 pb-3">
                                                         <span className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-1">{f.l}</span>
                                                         <input value={data[f.k] || ''} onChange={e => saveProfile(config.id, {...data, [f.k]: e.target.value})} className="bg-slate-50 border-none rounded-xl px-3 py-1 text-sm font-bold outline-none placeholder:text-slate-300 text-center" placeholder="待填寫" />
@@ -648,14 +655,14 @@
                             </form>
                         </section>
 
-                        {/* 精確地圖 & 足跡成長系統 */}
+                        {/* 精確地圖 & 足跡熱力系統 */}
                         <section className="space-y-6 text-center">
                             <div className="flex justify-between items-center px-2 text-left">
                                 <div>
                                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                        <Icon name="Sprout" size={14} className="text-emerald-500" /> 森林足跡進化地圖
+                                        <Icon name="Sprout" size={14} className="text-emerald-500" /> 森林足跡熱力圖
                                     </h3>
-                                    <p className="text-[9px] text-slate-300 font-bold mt-1">造訪多次的地方會長成大樹喔！</p>
+                                    <p className="text-[9px] text-slate-300 font-bold mt-1">縣市熱力隨總足跡加深，鄉鎮則獨立進化生命！</p>
                                 </div>
                                 <button onClick={() => setShowCityForm(!showCityForm)} className="text-xs font-bold text-emerald-500 hover:underline">{showCityForm ? '取消' : '+ 新增足跡'}</button>
                             </div>
@@ -675,24 +682,24 @@
                             )}
 
                             <div className="relative w-full h-[550px] bg-white rounded-[3.5rem] border-2 border-emerald-50 shadow-inner overflow-hidden mx-auto">
-                                <TaiwanProfessionalMap groupedFootprints={groupedFootprints} onCountyClick={(n) => setHistoryCity(n)} />
+                                <TaiwanProfessionalMap countyActivityCount={countyActivityCount} onCountyClick={(n) => { setHistoryCity(n); setEditingId(null); }} />
                                 <div className="absolute inset-0 pointer-events-none">
                                     {Object.entries(groupedFootprints).map(([cityName, records]) => {
                                         const pos = getMapPos(cityName);
                                         const count = records.length;
-                                        const isWish = records.some(r => r.type === 'wish');
                                         
-                                        // 根據次數決定圖示與樣式
+                                        // 決定成長圖示：如果次數為 1 則不顯示（交給縣市熱力顏色），2 次以上才開始顯示生命進化
                                         const getGrowthStyle = () => {
-                                            if (count === 1) return { icon: 'Flower', color: 'text-rose-400', size: 16 };
+                                            if (count < 2) return null; // 拿掉原本的小花（紅色圖案），單次紀錄僅由縣市顏色表示
                                             if (count === 2) return { icon: 'Sprout', color: 'text-emerald-400', size: 20 };
                                             return { icon: 'TreePine', color: 'text-emerald-600', size: 24 };
                                         };
                                         const style = getGrowthStyle();
+                                        if (!style) return null;
 
                                         return (
-                                            <div key={cityName} className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" style={{ left: pos.x, top: pos.y }} onClick={() => setHistoryCity(cityName)}>
-                                                <div className={`city-dot-pop flex items-center justify-center ${style.color} bg-white rounded-full p-1 shadow-md ring-2 ring-emerald-50 hover:scale-150 transition-all`}>
+                                            <div key={cityName} className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer" style={{ left: pos.x, top: pos.y }} onClick={() => { setHistoryCity(cityName); setEditingId(null); }}>
+                                                <div className={`city-dot-pop flex items-center justify-center ${style.color} bg-white/90 rounded-full p-1 shadow-md ring-2 ring-emerald-50 hover:scale-150 transition-all`}>
                                                     <Icon name={style.icon} size={style.size} fill="currentColor" className={count >= 3 ? "animate-pulse" : ""} />
                                                 </div>
                                             </div>
@@ -714,11 +721,7 @@
                                     <div className="flex flex-wrap gap-2 px-2">
                                         {item.location && <span className="text-[10px] font-bold bg-slate-50 px-3 py-1.5 rounded-xl text-emerald-600 flex items-center gap-1.5 shadow-sm"><Icon name="MapPin" size={10} fill="currentColor" /> {item.location}</span>}
                                         {item.targetDate && <span className="text-[10px] font-bold bg-slate-50 px-3 py-1.5 rounded-xl text-slate-500 flex items-center gap-1.5 shadow-sm"><Icon name="Calendar" size={10} className="text-rose-300" /> {item.targetDate.replace(/-/g, " . ")}</span>}
-                                        <button onClick={() => {
-                                            const next = !item.completed;
-                                            if (next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); }
-                                            window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next });
-                                        }} className={`ml-auto px-7 py-2.5 rounded-full text-[11px] font-black transition-all tap-active ${item.completed ? 'bg-emerald-500 text-white shadow-none' : 'bg-white border border-slate-100 text-slate-300 hover:border-emerald-200 hover:text-emerald-500 shadow-sm'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
+                                        <button onClick={() => { const next = !item.completed; if (next) { setIsGrowing(true); setTimeout(() => setIsGrowing(false), 1500); } window.fb.updateDoc(window.fb.doc(window.fb.db, 'artifacts', appId, 'public', 'data', 'wishes', item.id), { completed: next }); }} className={`ml-auto px-7 py-2.5 rounded-full text-[11px] font-black transition-all tap-active ${item.completed ? 'bg-emerald-500 text-white shadow-none' : 'bg-white border border-slate-100 text-slate-300 hover:border-emerald-200 hover:text-emerald-500 shadow-sm'}`}>{item.completed ? '願望達成' : '灌溉願望'}</button>
                                     </div>
                                 </div>
                             ))}
@@ -727,28 +730,55 @@
 
                     {/* 彈窗：回憶詳情 */}
                     {historyCity && (
-                        <div className="fixed inset-0 z-[110] bg-emerald-900/10 backdrop-blur-xl flex items-center justify-center p-6 text-center" onClick={() => setHistoryCity(null)}>
+                        <div className="fixed inset-0 z-[110] bg-emerald-900/10 backdrop-blur-xl flex items-center justify-center p-6 text-center" onClick={() => { setHistoryCity(null); setEditingId(null); }}>
                             <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-2 border-emerald-100" onClick={e=>e.stopPropagation()}>
-                                <div className="flex justify-between items-center mb-6">
+                                <div className="flex justify-between items-center mb-6 text-left">
                                     <div>
                                         <h2 className="font-black text-xl text-emerald-800">{historyCity}</h2>
-                                        <p className="text-[9px] font-bold text-emerald-400 text-left">共累積 {groupedFootprints[historyCity]?.length || 0} 個回憶</p>
+                                        <p className="text-[9px] font-bold text-emerald-400">區域內共有 {countyDetails.length} 則回憶</p>
                                     </div>
-                                    <button onClick={() => setHistoryCity(null)} className="p-2 text-slate-300 hover:text-emerald-500"><Icon name="X" /></button>
+                                    <button onClick={() => { setHistoryCity(null); setEditingId(null); }} className="p-2 text-slate-300 hover:text-emerald-500"><Icon name="X" /></button>
                                 </div>
-                                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
-                                    {groupedFootprints[historyCity]?.sort((a,b) => new Date(b.date) - new Date(a.date)).map((rec, i) => (
-                                        <div key={i} className="flex items-start gap-3 border-b border-emerald-50 pb-3 last:border-none text-left">
-                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
-                                                <Icon name={rec.type === 'wish' ? 'Plane' : 'TreePine'} size={16} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-300">{rec.date ? rec.date.replace(/-/g, ".") : '神祕某日'}</p>
-                                                <p className="text-sm font-bold text-slate-700 leading-relaxed">{rec.type === 'wish' ? `願望：${rec.text}` : '抵達森林足跡'}</p>
-                                            </div>
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide text-left">
+                                    {countyDetails.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0)).map((rec, i) => (
+                                        <div key={rec.id} className="relative pl-6 border-l-2 border-emerald-50 pb-6 last:pb-2 group">
+                                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-emerald-400 border-4 border-white shadow-sm"></div>
+                                            {editingId === rec.id ? (
+                                                <div className="bg-slate-50 p-4 rounded-2xl space-y-3 animate-in zoom-in-95">
+                                                    <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">修正足跡</div>
+                                                    <LocationPicker county={editCounty} town={editTown} onCountyChange={setEditCounty} onTownChange={setEditTown} isOptional={false} />
+                                                    <input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} className="w-full bg-white p-2 rounded-xl border-none outline-none text-xs font-bold shadow-inner" />
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => updateFootprint(rec.id)} className="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-[10px] font-black flex items-center justify-center gap-1"><Icon name="Save" size={12} /> 儲存</button>
+                                                        <button onClick={() => setEditingId(null)} className="px-4 py-2 bg-slate-200 text-slate-500 rounded-xl text-[10px] font-black">取消</button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <p className="text-[10px] font-black text-slate-300">{rec.date ? rec.date.replace(/-/g, ".") : '神祕某日'}</p>
+                                                            <span className="text-[9px] px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-black">{rec.name}</span>
+                                                        </div>
+                                                        <p className="text-sm font-bold text-slate-700 leading-relaxed">{rec.type === 'wish' ? `🌟 願望：${rec.text}` : `👣 抵達回憶點`}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {rec.type === 'manual' && (
+                                                            <button onClick={() => { 
+                                                                setEditingId(rec.id); 
+                                                                const locStr = normalName(rec.name);
+                                                                let c = ""; let t = "";
+                                                                for(let county in TW_MAP_DATA) { if(locStr.includes(county)) { c = county; t = locStr.replace(county, ""); break; } }
+                                                                setEditCounty(c); setEditTown(t); setEditDate(rec.date || '');
+                                                            }} className="text-slate-300 hover:text-emerald-500"><Icon name="Edit3" size={14} /></button>
+                                                        )}
+                                                        <SafeDeleteBtn onDelete={() => deleteItem(rec.type === 'manual' ? 'cities' : 'wishes', rec.id.replace('wish-', ''))} />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
-                                    {(!groupedFootprints[historyCity] || groupedFootprints[historyCity].length === 0) && <p className="text-slate-300 text-xs italic text-center">這裡是尚未探索的森林邊緣...</p>}
+                                    {countyDetails.length === 0 && <p className="text-slate-300 text-xs italic text-center py-10">這裡是尚未探索的森林邊緣...</p>}
                                 </div>
                             </div>
                         </div>
